@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QMenu, QVBoxLayout, QSizePolicy, QMessageBox,
                              QWidget, QPushButton, QSlider, QHBoxLayout, QGroupBox, QRadioButton,
-                             QGridLayout, QLabel)
+                             QGridLayout, QLabel, QInputDialog, QFileDialog)
 from PyQt5.QtCore import Qt
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -12,8 +12,9 @@ import sys
 class Window(QWidget):
     def __init__(self, parent=None):
         super(Window, self).__init__(parent)
-        nii = nib.load('../../Calgary_PS_DTI_Dataset/10001/PS14_006/b750/PS14_006_750.nii')
-        self.data = nii.get_fdata()
+        # nii = nib.load('../../Calgary_PS_DTI_Dataset/10001/PS14_006/b750/PS14_006_750.nii')
+        # self.data = nii.get_fdata()
+        self.openFileNameDialog()
 
         grid = QGridLayout()
         axialView = PlaneView("Axial", self.data, 53)
@@ -30,6 +31,18 @@ class Window(QWidget):
         axialView.set_slider(26)
         sagittalView.set_slider(128)
         coronalView.set_slider(128)
+
+    def openFileNameDialog(self):
+        options = QFileDialog.Options()
+        file, _ = QFileDialog.getOpenFileName(self, caption='Select file to open',
+                                              directory='../../', filter='.nii files(*.nii)',
+                                              options=options)
+        if file:
+            nii = nib.load(file)
+            self.data = nii.get_fdata()
+        else:
+            exit(0)
+
 
 
 class PlaneView(QWidget):
