@@ -44,7 +44,6 @@ class VolumeSelectView(QWidget):
         vbox.addWidget(self.triplane)
 
         # Right-half: file list area
-        QWidget
         self.file_list = QListWidget(self)
         for item in self.niiPaths:
             self.file_list.addItem(item)
