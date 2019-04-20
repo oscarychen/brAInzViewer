@@ -36,12 +36,15 @@ class VolumeSelectView(QWidget):
         self.slider.setMaximum(self.data.shape[3]-1)
         #self.slider.setMaximum(35)
 
+        # Left-half: data display area
         vbox = QVBoxLayout()
         vbox.addWidget(self.file_label)
         vbox.addWidget(self.volume_label)
         vbox.addWidget(self.slider)
         vbox.addWidget(self.triplane)
 
+        # Right-half: file list area
+        QWidget
         self.file_list = QListWidget(self)
         for item in self.niiPaths:
             self.file_list.addItem(item)
@@ -60,12 +63,10 @@ class VolumeSelectView(QWidget):
         self.triplane.replot()
 
     def changeNiiFile(self, file):
-        print(file)
-        print("Opening file...")
+        print("Opening file: " + file)
         nii = nib.load(file)
-        print("Loading data...")
         self.data = nii.get_fdata()
-        print("Data loaded")
+        print("Data loaded: " + str(self.data.shape))
         self.file_label.setText(file)
 
     def openFolderDialog(self):
@@ -101,26 +102,38 @@ class VolumeSelectView(QWidget):
 
 class TriPlaneView(QWidget):
     def __init__(self, data, parent=None):
+        # print("Debug: TriPlaneView.__init__")
         super(TriPlaneView, self).__init__(parent)
 
         self.data = data
         grid = QGridLayout()
-        self.axialView = PlaneView("Axial", self.data, 0, 53)
-        self.sagittalView = PlaneView("Sagittal", self.data, 0, 255)
-        self.coronalView = PlaneView("Coronal", self.data, 0, 255)
+        self.axialView = PlaneView("Axial", self.data, 0, self.data.shape[2]-1)  # name, data, volume number, slice number
+        self.sagittalView = PlaneView("Sagittal", self.data, 0, self.data.shape[0]-1)
+        self.coronalView = PlaneView("Coronal", self.data, 0, self.data.shape[1]-1)
         grid.addWidget(self.axialView, 0, 0)
         grid.addWidget(self.sagittalView, 0, 1)
         grid.addWidget(self.coronalView, 0, 2)
 
         self.setLayout(grid)
 
-        self.axialView.set_slider(26)
-        self.sagittalView.set_slider(128)
-        self.coronalView.set_slider(128)
+        self.axialView.set_slider(self.data.shape[2]//2)         # Initial slider position
+        self.sagittalView.set_slider(self.data.shape[0]//2)      # Initial slider position
+        self.coronalView.set_slider(self.data.shape[1]//2)       # Initial slider position
     
     def replot(self):
+        print('Debug: Update axial slider max to ' + str(self.data.shape[2]-1))
+        self.axialView.setMaxSlider(self.data.shape[2]-1)
+        self.axialView.set_slider(self.data.shape[2]//2)        # Slider postion when loading a new file
         self.axialView.replot()
+
+        print('Debug: Update sagittal slider max to ' + str(self.data.shape[0] - 1))
+        self.sagittalView.setMaxSlider(self.data.shape[0]-1)
+        self.sagittalView.set_slider(self.data.shape[0]//2)
         self.sagittalView.replot()
+
+        print('Debug: Update coronal slider max to ' + str(self.data.shape[1] - 1))
+        self.coronalView.setMaxSlider(self.data.shape[1]-1)
+        self.coronalView.set_slider(self.data.shape[1]//2)
         self.coronalView.replot()
     
     def clearPlot(self):
@@ -129,6 +142,7 @@ class TriPlaneView(QWidget):
         self.coronalView.clearPlot()
 
     def setData(self, data):
+        self.data = data
         self.axialView.setData(data)
         self.sagittalView.setData(data)
         self.coronalView.setData(data)
@@ -136,6 +150,7 @@ class TriPlaneView(QWidget):
 
 class PlaneView(QWidget):
     def __init__(self, name, data, volume, numslices, parent=None):
+        # print("Debug: PlaneView.__init__")
         super(PlaneView, self).__init__(parent)
         self.data = data
         label = QLabel()
@@ -164,7 +179,7 @@ class PlaneView(QWidget):
 
     def value_changed(self, value):
         self.canvas.setSliceIndex(value)
-        self.slice_num_label.setText(str(value))
+        self.setSliceLabel(value)
 
     def set_volume(self, value):
         self.canvas.setVolume(value)
@@ -176,10 +191,20 @@ class PlaneView(QWidget):
         self.canvas.clearPlot()
 
     def setData(self, data):
+        self.data = data
         self.canvas.setData(data)
+
+    def setMaxSlider(self, value):
+        self.slider.setMaximum(value)
+
+    def setSliceLabel(self, value):
+
+        self.slice_num_label.setText(str(value))
+
 
 class PlotCanvas(FigureCanvas):
     def __init__(self, slicetype, data, volume, parent=None):
+        # print("Debug: PlotCanvas.__init__")
         self.slicetype = slicetype
         self.data = data
         self.volume = volume
@@ -188,7 +213,6 @@ class PlotCanvas(FigureCanvas):
         self.setParent(parent)
         FigureCanvas.setSizePolicy(self, QSizePolicy.Expanding, QSizePolicy.Expanding)
         FigureCanvas.updateGeometry(self)
-        print(self.data.shape)
         self.cur_slice = 0
         self.ax = self.figure.add_subplot(111)
         self.plot()
@@ -208,15 +232,22 @@ class PlotCanvas(FigureCanvas):
     def plot(self):
         self.ax.cla()
         self.ax.set_axis_off()
+
         if self.slicetype == "Axial":
+
             curslice = self.data[:, :, self.cur_slice, self.volume]
             self.ax.imshow(curslice.T, cmap="gray", origin="lower", vmin=0, vmax=2000)
+
         elif self.slicetype == "Sagittal":
+
             curslice = self.data[self.cur_slice, :, :, self.volume]
             self.ax.imshow(curslice.T, cmap="gray", origin="lower", aspect=256.0 / 54.0, vmin=0, vmax=2000)
+
         elif self.slicetype == "Coronal":
+
             curslice = self.data[:, self.cur_slice, :, self.volume]
             self.ax.imshow(curslice.T, cmap="gray", origin="lower", aspect=256.0 / 54.0, vmin=0, vmax=2000)
+
         self.draw()
 
     def clearPlot(self):
