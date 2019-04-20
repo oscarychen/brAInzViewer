@@ -6,12 +6,13 @@ from PyQt5.QtCore import Qt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import nibabel as nib
+import sys
 
 
 class Window(QWidget):
     def __init__(self, parent=None):
         super(Window, self).__init__(parent)
-        nii = nib.load('../../Data/10001/PS14_006/b750/PS14_006_750.nii')
+        nii = nib.load('../../Calgary_PS_DTI_Dataset/10001/PS14_006/b750/PS14_006_750.nii')
         self.data = nii.get_fdata()
         
         grid = QGridLayout()
@@ -99,7 +100,9 @@ class PlotCanvas(FigureCanvas):
         self.draw()
 
 if __name__ == '__main__':
-    #app = QApplication(sys.argv)
+    if sys.platform != 'win32':
+        app = QApplication(sys.argv)
     window = Window()
     window.show()
-    #sys.exit(app.exec_())
+    if sys.platform != 'win32':
+        sys.exit(app.exec_())
