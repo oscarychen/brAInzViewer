@@ -47,7 +47,10 @@ class VolumeSelectView(QWidget):
         self.file_list = QListWidget(self)
         for item in self.niiPaths:
             self.file_list.addItem(item)
-        self.file_list.setMinimumWidth(self.file_list.sizeHintForColumn(0))
+        max_list_width = 600
+        if self.file_list.sizeHintForColumn(0) < max_list_width:
+            max_list_width = self.file_list.sizeHintForColumn(0)
+        self.file_list.setMinimumWidth(max_list_width)
         self.file_list.itemSelectionChanged.connect(self.selectedFileChanged)
 
         hbox = QHBoxLayout()
