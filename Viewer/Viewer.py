@@ -9,28 +9,33 @@ import nibabel as nib
 import sys
 
 
-class Window(QWidget):
+class VolumeSelectView(QWidget):
     def __init__(self, parent=None):
-        super(Window, self).__init__(parent)
-        # nii = nib.load('../../Calgary_PS_DTI_Dataset/10001/PS14_006/b750/PS14_006_750.nii')
-        # self.data = nii.get_fdata()
+        super(VolumeSelectView, self).__init__(parent)
+
+        self.file_label = QLabel('No file loaded.')
+        self.volume_label = QLabel()
+
+        self.data = None
+        self.slider = QSlider(Qt.Horizontal)
+        self.slider.setFocusPolicy(Qt.StrongFocus)
+        self.slider.setTickPosition(QSlider.TicksBothSides)
+        self.slider.setTickInterval(1)
+        # self.slider.setSingleStep(1)
+        self.slider.setMinimum(0)
+        self.slider.valueChanged.connect(self.set_volume)
+
         self.openFileNameDialog()
 
-        grid = QGridLayout()
-        axialView = PlaneView("Axial", self.data, 53)
-        sagittalView = PlaneView("Sagittal", self.data, 255)
-        coronalView = PlaneView("Coronal", self.data, 255)
-        grid.addWidget(axialView, 0, 0)
-        grid.addWidget(sagittalView, 0, 1)
-        grid.addWidget(coronalView, 0, 2)
+        self.triplane = TriPlaneView(self.data)
 
-        self.setLayout(grid)
-        self.setWindowTitle("MRI Viewer")
-        self.resize(1280, 600)
+        vbox = QVBoxLayout()
+        vbox.addWidget(self.file_label)
+        vbox.addWidget(self.volume_label)
+        vbox.addWidget(self.slider)
+        vbox.addWidget(self.triplane)
 
-        axialView.set_slider(26)
-        sagittalView.set_slider(128)
-        coronalView.set_slider(128)
+        self.setLayout(vbox)
 
     def openFileNameDialog(self):
         options = QFileDialog.Options()
@@ -40,13 +45,58 @@ class Window(QWidget):
         if file:
             nii = nib.load(file)
             self.data = nii.get_fdata()
+            self.file_label.setText(file)
+            self.slider.setMaximum(self.data.shape[3]-1)
+            self.volume_label.setText('0')
         else:
             exit(0)
 
+    def set_volume(self, value):
+        self.volume_label.setText(str(value))
+        self.triplane.axialView.set_volume(value)
+        self.triplane.sagittalView.set_volume(value)
+        self.triplane.coronalView.set_volume(value)
+
+
+
+class TriPlaneView(QWidget):
+    def __init__(self, data, parent=None):
+        super(TriPlaneView, self).__init__(parent)
+        # nii = nib.load('../../Calgary_PS_DTI_Dataset/10001/PS14_006/b750/PS14_006_750.nii')
+        # self.data = nii.get_fdata()
+        # self.openFileNameDialog()
+
+        self.data = data
+        grid = QGridLayout()
+        self.axialView = PlaneView("Axial", self.data, 0, 53)
+        self.sagittalView = PlaneView("Sagittal", self.data, 0, 255)
+        self.coronalView = PlaneView("Coronal", self.data, 0, 255)
+        grid.addWidget(self.axialView, 0, 0)
+        grid.addWidget(self.sagittalView, 0, 1)
+        grid.addWidget(self.coronalView, 0, 2)
+
+        self.setLayout(grid)
+        self.setWindowTitle("MRI Viewer")
+        self.resize(1280, 600)
+
+        self.axialView.set_slider(26)
+        self.sagittalView.set_slider(128)
+        self.coronalView.set_slider(128)
+
+    # def openFileNameDialog(self):
+    #     options = QFileDialog.Options()
+    #     file, _ = QFileDialog.getOpenFileName(self, caption='Select file to open',
+    #                                           directory='../../', filter='.nii files(*.nii)',
+    #                                           options=options)
+    #     if file:
+    #         nii = nib.load(file)
+    #         self.data = nii.get_fdata()
+    #     else:
+    #         exit(0)
 
 
 class PlaneView(QWidget):
-    def __init__(self, name, data, numslices, parent=None):
+    def __init__(self, name, data, volume, numslices, parent=None):
         super(PlaneView, self).__init__(parent)
         self.data = data
         self.type = name
@@ -62,7 +112,7 @@ class PlaneView(QWidget):
         self.slider.setMaximum(numslices)
         self.slider.valueChanged.connect(self.value_changed)
 
-        self.canvas = PlotCanvas(name, self.data)
+        self.canvas = PlotCanvas(name, self.data, volume)
         vbox = QVBoxLayout()
         vbox.addWidget(label)
         vbox.addWidget(self.slice_num_label)
@@ -78,12 +128,15 @@ class PlaneView(QWidget):
         self.canvas.setSliceIndex(value)
         self.slice_num_label.setText(str(value))
 
+    def set_volume(self, value):
+        self.canvas.setVolume(value)
 
 
 class PlotCanvas(FigureCanvas):
-    def __init__(self, slicetype, data, parent=None, width=5, height=4, dpi=100):
+    def __init__(self, slicetype, data, volume, parent=None, width=5, height=4, dpi=100):
         self.slicetype = slicetype
         self.data = data
+        self.volume = volume
         fig = Figure()
         FigureCanvas.__init__(self, fig)
         self.setParent(parent)
@@ -92,6 +145,10 @@ class PlotCanvas(FigureCanvas):
         print(self.data.shape)
         self.cur_slice = 0
         self.ax = self.figure.add_subplot(111)
+        self.plot()
+
+    def setVolume(self, value):
+        self.volume = value
         self.plot()
 
     def forwards(self):
@@ -106,13 +163,13 @@ class PlotCanvas(FigureCanvas):
         self.ax.cla()
         self.ax.set_axis_off()
         if self.slicetype == "Axial":
-            curslice = self.data[:, :, self.cur_slice, 1]
+            curslice = self.data[:, :, self.cur_slice, self.volume]
             self.ax.imshow(curslice.T, cmap="gray", origin="lower", vmin=0, vmax=2000)
         elif self.slicetype == "Sagittal":
-            curslice = self.data[self.cur_slice, :, :, 1]
+            curslice = self.data[self.cur_slice, :, :, self.volume]
             self.ax.imshow(curslice.T, cmap="gray", origin="lower", aspect=256.0 / 54.0, vmin=0, vmax=2000)
         elif self.slicetype == "Coronal":
-            curslice = self.data[:, self.cur_slice, :, 1]
+            curslice = self.data[:, self.cur_slice, :, self.volume]
             self.ax.imshow(curslice.T, cmap="gray", origin="lower", aspect=256.0 / 54.0, vmin=0, vmax=2000)
         self.draw()
 
@@ -120,7 +177,7 @@ class PlotCanvas(FigureCanvas):
 if __name__ == '__main__':
     if sys.platform != 'win32':
         app = QApplication(sys.argv)
-    window = Window()
+    window = VolumeSelectView()
     window.show()
     if sys.platform != 'win32':
         sys.exit(app.exec_())
