@@ -8,6 +8,10 @@ from matplotlib.figure import Figure
 import nibabel as nib
 import sys
 import os
+import numpy as np
+
+DEBUG = False
+
 
 class VolumeSelectView(QWidget):
     def __init__(self, parent=None):
@@ -18,7 +22,7 @@ class VolumeSelectView(QWidget):
 
         self.file_label = QLabel('No file loaded.')
         self.volume_label = QLabel()
-        
+
         self.slider = QSlider(Qt.Horizontal)
         self.slider.setFocusPolicy(Qt.StrongFocus)
         self.slider.setTickPosition(QSlider.TicksBothSides)
@@ -33,8 +37,8 @@ class VolumeSelectView(QWidget):
 
         self.triplane = TriPlaneView(self.data)
         self.volume_label.setText('0')
-        self.slider.setMaximum(self.data.shape[3]-1)
-        #self.slider.setMaximum(35)
+        self.slider.setMaximum(self.data.shape[3] - 1)
+        # self.slider.setMaximum(35)
 
         # Left-half: data display area
         vbox = QVBoxLayout()
@@ -57,7 +61,7 @@ class VolumeSelectView(QWidget):
         hbox.addLayout(vbox)
         hbox.addWidget(self.file_list)
         self.setLayout(hbox)
-    
+
     def selectedFileChanged(self):
         self.triplane.clearPlot()
         self.changeNiiFile(self.file_list.currentItem().text())
@@ -65,10 +69,10 @@ class VolumeSelectView(QWidget):
         self.triplane.replot()
 
     def changeNiiFile(self, file):
-        print("Opening file: " + file)
+        if DEBUG: print("Debug: Opening file: " + file)
         nii = nib.load(file)
         self.data = nii.get_fdata()
-        print("Data loaded: " + str(self.data.shape))
+        if DEBUG: print("Data loaded: " + str(self.data.shape))
         self.file_label.setText(file)
 
     def openFolderDialog(self):
@@ -84,7 +88,6 @@ class VolumeSelectView(QWidget):
         else:
             exit(0)
 
-    
     def getNiiPaths(self, folder):
         """Scan the folder and its sub-dirs, return a list of .nii files found."""
         nii_list = []
@@ -94,7 +97,7 @@ class VolumeSelectView(QWidget):
                     file_path = os.path.join(dirpaths, file)
                     nii_list.append(file_path)
         return nii_list
-    
+
     def set_volume(self, value):
         self.volume_label.setText(str(value))
         self.triplane.axialView.set_volume(value)
@@ -104,40 +107,42 @@ class VolumeSelectView(QWidget):
 
 class TriPlaneView(QWidget):
     def __init__(self, data, parent=None):
-        # print("Debug: TriPlaneView.__init__")
+        if DEBUG: print("Debug: TriPlaneView.__init__")
+
         super(TriPlaneView, self).__init__(parent)
 
         self.data = data
         grid = QGridLayout()
-        self.axialView = PlaneView("Axial", self.data, 0, self.data.shape[2]-1)  # name, data, volume number, slice number
-        self.sagittalView = PlaneView("Sagittal", self.data, 0, self.data.shape[0]-1)
-        self.coronalView = PlaneView("Coronal", self.data, 0, self.data.shape[1]-1)
+        self.axialView = PlaneView("Axial", self.data, 0,
+                                   self.data.shape[2] - 1)  # name, data, volume number, slice number
+        self.sagittalView = PlaneView("Sagittal", self.data, 0, self.data.shape[0] - 1)
+        self.coronalView = PlaneView("Coronal", self.data, 0, self.data.shape[1] - 1)
         grid.addWidget(self.axialView, 0, 0)
         grid.addWidget(self.sagittalView, 0, 1)
         grid.addWidget(self.coronalView, 0, 2)
 
         self.setLayout(grid)
 
-        self.axialView.set_slider(self.data.shape[2]//2)         # Initial slider position
-        self.sagittalView.set_slider(self.data.shape[0]//2)      # Initial slider position
-        self.coronalView.set_slider(self.data.shape[1]//2)       # Initial slider position
-    
+        self.axialView.set_slider(self.data.shape[2] // 2)  # Initial slider position
+        self.sagittalView.set_slider(self.data.shape[0] // 2)  # Initial slider position
+        self.coronalView.set_slider(self.data.shape[1] // 2)  # Initial slider position
+
     def replot(self):
-        print('Debug: Update axial slider max to ' + str(self.data.shape[2]-1))
-        self.axialView.setMaxSlider(self.data.shape[2]-1)
-        self.axialView.set_slider(self.data.shape[2]//2)        # Slider postion when loading a new file
+        if DEBUG: print('Debug: Update axial slider max to ' + str(self.data.shape[2]-1))
+        self.axialView.setMaxSlider(self.data.shape[2] - 1)
+        self.axialView.set_slider(self.data.shape[2] // 2)  # Slider postion when loading a new file
         self.axialView.replot()
 
-        print('Debug: Update sagittal slider max to ' + str(self.data.shape[0] - 1))
-        self.sagittalView.setMaxSlider(self.data.shape[0]-1)
-        self.sagittalView.set_slider(self.data.shape[0]//2)
+        if DEBUG: print('Debug: Update sagittal slider max to ' + str(self.data.shape[0] - 1))
+        self.sagittalView.setMaxSlider(self.data.shape[0] - 1)
+        self.sagittalView.set_slider(self.data.shape[0] // 2)
         self.sagittalView.replot()
 
-        print('Debug: Update coronal slider max to ' + str(self.data.shape[1] - 1))
-        self.coronalView.setMaxSlider(self.data.shape[1]-1)
-        self.coronalView.set_slider(self.data.shape[1]//2)
+        if DEBUG: print('Debug: Update coronal slider max to ' + str(self.data.shape[1] - 1))
+        self.coronalView.setMaxSlider(self.data.shape[1] - 1)
+        self.coronalView.set_slider(self.data.shape[1] // 2)
         self.coronalView.replot()
-    
+
     def clearPlot(self):
         self.axialView.clearPlot()
         self.sagittalView.clearPlot()
@@ -152,7 +157,7 @@ class TriPlaneView(QWidget):
 
 class PlaneView(QWidget):
     def __init__(self, name, data, volume, numslices, parent=None):
-        # print("Debug: PlaneView.__init__")
+        if DEBUG: print("Debug: PlaneView.__init__")
         super(PlaneView, self).__init__(parent)
         self.data = data
         label = QLabel()
@@ -185,10 +190,10 @@ class PlaneView(QWidget):
 
     def set_volume(self, value):
         self.canvas.setVolume(value)
-    
+
     def replot(self):
         self.canvas.plot()
-    
+
     def clearPlot(self):
         self.canvas.clearPlot()
 
@@ -200,15 +205,16 @@ class PlaneView(QWidget):
         self.slider.setMaximum(value)
 
     def setSliceLabel(self, value):
-
         self.slice_num_label.setText(str(value))
 
 
 class PlotCanvas(FigureCanvas):
     def __init__(self, slicetype, data, volume, parent=None):
-        # print("Debug: PlotCanvas.__init__")
+        if DEBUG: print("Debug: PlotCanvas.__init__")
         self.slicetype = slicetype
         self.data = data
+        self.maxVoxVal = np.amax(self.data)
+        self.minVoxVal = np.amin(self.data)
         self.volume = volume
         fig = Figure()
         FigureCanvas.__init__(self, fig)
@@ -238,17 +244,19 @@ class PlotCanvas(FigureCanvas):
         if self.slicetype == "Axial":
 
             curslice = self.data[:, :, self.cur_slice, self.volume]
-            self.ax.imshow(curslice.T, cmap="gray", origin="lower", vmin=0, vmax=2000)
+            self.ax.imshow(curslice.T, cmap="gray", origin="lower", vmin=self.minVoxVal, vmax=self.maxVoxVal)
 
         elif self.slicetype == "Sagittal":
 
             curslice = self.data[self.cur_slice, :, :, self.volume]
-            self.ax.imshow(curslice.T, cmap="gray", origin="lower", aspect=256.0 / 54.0, vmin=0, vmax=2000)
+            self.ax.imshow(curslice.T, cmap="gray", origin="lower", aspect=256.0 / 54.0, vmin=self.minVoxVal,
+                           vmax=self.maxVoxVal)
 
         elif self.slicetype == "Coronal":
 
             curslice = self.data[:, self.cur_slice, :, self.volume]
-            self.ax.imshow(curslice.T, cmap="gray", origin="lower", aspect=256.0 / 54.0, vmin=0, vmax=2000)
+            self.ax.imshow(curslice.T, cmap="gray", origin="lower", aspect=256.0 / 54.0, vmin=self.minVoxVal,
+                           vmax=self.maxVoxVal)
 
         self.draw()
 
@@ -256,9 +264,11 @@ class PlotCanvas(FigureCanvas):
         self.ax.cla()
         self.ax.set_axis_off()
         self.draw()
-    
+
     def setData(self, data):
         self.data = data
+        self.maxVoxVal = np.amax(self.data)
+        self.minVoxVal = np.amin(self.data)
 
 
 if __name__ == '__main__':
