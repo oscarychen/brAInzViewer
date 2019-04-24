@@ -154,6 +154,20 @@ class TriPlaneView(QWidget):
         self.sagittalView.setData(data)
         self.coronalView.setData(data)
 
+class ViewControls(QWidget):
+    """Controls for each PlotCanvas class, vertical slider to adjust brightness, label selector, etc"""
+    def __init__(self, maxVal, minVal):
+        self.maxVal = maxVal
+        self.slider = QSlider(Qt.Vertical)
+        self.slider.setFocusPolicy(Qt.StrongFocus)
+        self.slider.setTickPosition(QSlider.TicksBothSides)
+        self.slider.setTickInterval(100)
+        self.slider.setMinimum(0)
+        self.slider.setMaximum(maxVal)
+        self.slider.valueChanged.connect(self.updateBrightness)
+
+    def updateBrightness(self):
+        pass
 
 class PlaneView(QWidget):
     def __init__(self, name, data, volume, numslices, parent=None):
