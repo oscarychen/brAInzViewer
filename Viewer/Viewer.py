@@ -12,8 +12,47 @@ import sys
 import os
 import numpy as np
 
-DEBUG = False
-VOX_MAX_VAL = 2000
+VOX_MAX_VAL = 2500
+
+class LabelData:
+    """A class that holds label data"""
+    def __init__(self):
+        self.labelData = dict()
+        # Key: label category, Value: list of labels the category
+        self.labelData = {'Motion Types': ['Blur', 'Gap/Line', 'Dimmed', 'Tunneling']}
+
+    def getLabelKeys(self):
+        """Return list of keys"""
+        return self.labelData.keys()
+
+    def getLabelValueByKey(self, category):
+        """Return list of values for a given key"""
+        return self.labelData.get(category, default=None)
+
+    def addKey(self, category):
+        """Add a new category"""
+        if category not in self.labelData:
+            self.labelData[category] = None
+
+    def removeKey(self, category):
+        """Remove a category"""
+        if category in self.labelData:
+            del self.labelData[category]
+
+    def addKeyValue(self, category, label):
+        """Adds a label to an existing category's list of labels"""
+        labels = self.labelData[category]
+        if label not in labels:
+            labels.append(label)
+            self.labelData[category] = labels
+
+    def removeValue(self, category, label):
+        """Removes a label from an existing category's list of labels"""
+        labels = self.labelData[category]
+        if label in labels:
+            labels.remove(label)
+            self.labelData[category] = labels
+
 
 class VolumeSelectView(QWidget):
     def __init__(self, parent=None):
@@ -72,10 +111,10 @@ class VolumeSelectView(QWidget):
         self.triplane.replot()
 
     def changeNiiFile(self, file):
-        if DEBUG: print("Debug: Opening file: " + file)
+        # print("Debug: Opening file: " + file)
         nii = nib.load(file)
         self.data = nii.get_fdata()
-        if DEBUG: print("Data loaded: " + str(self.data.shape))
+        # print("Data loaded: " + str(self.data.shape))
         self.file_label.setText(file)
 
     def openFolderDialog(self):
@@ -116,7 +155,7 @@ class DisplayRangeSelector(QWidget):
         self.triplane = triplane
         self.startSliderMaxValue = VOX_MAX_VAL
         self.endSliderMaxValue = VOX_MAX_VAL
-        self.minSelected = VOX_MAX_VAL - self.startSliderMaxValue    # NOTE: the start slider is reversed in value
+        self.minSelected = VOX_MAX_VAL - self.startSliderMaxValue  # NOTE: start slider is reversed in value/direction
         self.maxSelected = self.endSliderMaxValue
 
         self.setupUi(self)
@@ -183,28 +222,29 @@ class DisplayRangeSelector(QWidget):
         self.show()
 
     def updateLabel(self):
+        print(f'Voxel sliders: {self.minSelected}, {self.maxSelected}')
         self.label.setText(f'Voxel Display Boundaries:({self.minSelected},{self.maxSelected})')
 
     @pyqtSlot(int)
     def handleStartSliderValueChange(self, value):
-        print(f'DEBUG: start slider = {value}')
         self.startSlider.setValue(value)
-        self.minSelected = VOX_MAX_VAL - value  # NOTE: Start slider is reversed in value
+        self.minSelected = VOX_MAX_VAL - value  # NOTE: Start slider is reversed in value/direction
+        self.endSlider.setMinimum(self.minSelected)  # Prevents slider range cross over
         self.triplane.voxDisplayUpdate(self.minSelected, self.maxSelected)
         self.updateLabel()
 
 
     @pyqtSlot(int)
     def handleEndSliderValueChange(self, value):
-        print(f'DEBUG: end slider = {value}')
         self.endSlider.setValue(value)
         self.maxSelected = value
-        self.triplane.voxDisplayUpdate(self.minSelected, self.maxSelected)
+        self.startSlider.setMinimum(VOX_MAX_VAL - self.maxSelected) # Prevents slider range cross over
         self.updateLabel()
+        self.triplane.voxDisplayUpdate(self.minSelected, self.maxSelected)
+
 
 class TriPlaneView(QWidget):
     def __init__(self, data, parent=None):
-        if DEBUG: print("Debug: TriPlaneView.__init__")
 
         super(TriPlaneView, self).__init__(parent)
 
@@ -233,17 +273,17 @@ class TriPlaneView(QWidget):
         self.replot()
 
     def replot(self):
-        if DEBUG: print('Debug: Update axial slider max to ' + str(self.data.shape[2]-1))
+        # print('Debug: Update axial slider max to ' + str(self.data.shape[2]-1))
         self.axialView.setMaxSlider(self.data.shape[2] - 1)
         self.axialView.set_slider(self.data.shape[2] // 2)  # Slider position when loading a new file
         self.axialView.replot()
 
-        if DEBUG: print('Debug: Update sagittal slider max to ' + str(self.data.shape[0] - 1))
+        # print('Debug: Update sagittal slider max to ' + str(self.data.shape[0] - 1))
         self.sagittalView.setMaxSlider(self.data.shape[0] - 1)
         self.sagittalView.set_slider(self.data.shape[0] // 2)
         self.sagittalView.replot()
 
-        if DEBUG: print('Debug: Update coronal slider max to ' + str(self.data.shape[1] - 1))
+        # print('Debug: Update coronal slider max to ' + str(self.data.shape[1] - 1))
         self.coronalView.setMaxSlider(self.data.shape[1] - 1)
         self.coronalView.set_slider(self.data.shape[1] // 2)
         self.coronalView.replot()
@@ -259,14 +299,16 @@ class TriPlaneView(QWidget):
         self.sagittalView.setData(data)
         self.coronalView.setData(data)
 
+
 class LabelSelector(QWidget):
     """label selector"""
-    def __init__(self, maxVal, minVal):
+    def __init__(self):
         pass
+
 
 class PlaneView(QWidget):
     def __init__(self, name, data, volume, numslices, parent=None):
-        if DEBUG: print("Debug: PlaneView.__init__")
+
         super(PlaneView, self).__init__(parent)
         self.data = data
         label = QLabel()
@@ -320,7 +362,7 @@ class PlaneView(QWidget):
 
 class PlotCanvas(FigureCanvas):
     def __init__(self, slicetype, data, volume, parent=None):
-        if DEBUG: print("Debug: PlotCanvas.__init__")
+
         self.slicetype = slicetype
         self.data = data
         self.maxVoxVal = np.amax(self.data)
