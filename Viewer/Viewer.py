@@ -14,8 +14,10 @@ import numpy as np
 
 VOX_MAX_VAL = 2500
 
+
 class LabelData:
     """A class that holds label data"""
+
     def __init__(self):
         self.labelData = dict()
         # Key: label category, Value: list of labels the category
@@ -153,12 +155,19 @@ class DisplayRangeSelector(QWidget):
         super().__init__()
         self.label = QLabel('Voxel Display Boundaries')
         self.triplane = triplane
-        self.startSliderMaxValue = VOX_MAX_VAL
-        self.endSliderMaxValue = VOX_MAX_VAL
-        self.minSelected = VOX_MAX_VAL - self.startSliderMaxValue  # NOTE: start slider is reversed in value/direction
-        self.maxSelected = self.endSliderMaxValue
+        self.startProportion = 0.2  # the start slider's range proportion to the entire range length
+        self.startSliderMaxValue = VOX_MAX_VAL * self.startProportion  # the max value of the start slider
+        self.endSliderMaxValue = VOX_MAX_VAL * (1 - self.startProportion)  # the max value of the end slider
+        self.minDisplayVox = 0  # the converted min value for displaying voxel
+        self.maxDisplayVox = VOX_MAX_VAL  # the converted max value for displaying voxel
 
         self.setupUi(self)
+
+    def convertMinSliderToMinVox(self, value):
+        return int(VOX_MAX_VAL * self.startProportion - value)
+
+    def convertMaxSliderToMaxVox(self, value):
+        return int(value + VOX_MAX_VAL * self.startProportion)
 
     def setupUi(self, RangeSlider):
         RangeSlider.setObjectName("RangeSlider")
@@ -182,7 +191,7 @@ class DisplayRangeSelector(QWidget):
 
         ## Start Slider Widget
         self.startSlider = QSlider(self.slidersFrame)
-        self.startSlider.setMaximum(VOX_MAX_VAL)
+        self.startSlider.setMaximum(self.startSliderMaxValue)
         self.startSlider.setMinimumSize(QSize(100, 5))
         self.startSlider.setMaximumSize(QSize(16777215, 10))
 
@@ -195,13 +204,12 @@ class DisplayRangeSelector(QWidget):
         self.startSlider.setOrientation(Qt.Horizontal)
         self.startSlider.setInvertedAppearance(True)
         self.startSlider.setObjectName("startSlider")
-        self.startSlider.setValue(self.endSliderMaxValue)
+        self.startSlider.setValue(self.startSliderMaxValue)
         self.startSlider.valueChanged.connect(self.handleStartSliderValueChange)
-        self.horizontalLayout.addWidget(self.startSlider)
 
         ## End Slider Widget
         self.endSlider = QSlider(self.slidersFrame)
-        self.endSlider.setMaximum(VOX_MAX_VAL)
+        self.endSlider.setMaximum(self.endSliderMaxValue)
         self.endSlider.setMinimumSize(QSize(100, 5))
         self.endSlider.setMaximumSize(QSize(16777215, 10))
         self.endSlider.setTracking(True)
@@ -210,42 +218,38 @@ class DisplayRangeSelector(QWidget):
         self.endSlider.setValue(self.endSliderMaxValue)
         self.endSlider.valueChanged.connect(self.handleEndSliderValueChange)
 
-        #self.endSlider.sliderReleased.connect(self.handleEndSliderValueChange)
-
-        self.horizontalLayout.addWidget(self.endSlider)
+        # self.endSlider.sliderReleased.connect(self.handleEndSliderValueChange)
+        self.horizontalLayout.addWidget(self.startSlider, int(self.startProportion * 100))
+        self.horizontalLayout.addWidget(self.endSlider, int(100 - 100 * self.startProportion))
         self.RangeBarVLayout.addWidget(self.label)
         self.RangeBarVLayout.addWidget(self.slidersFrame)
 
-        #self.retranslateUi(RangeSlider)
+        # self.retranslateUi(RangeSlider)
         QMetaObject.connectSlotsByName(RangeSlider)
 
         self.show()
 
     def updateLabel(self):
-        print(f'Voxel sliders: {self.minSelected}, {self.maxSelected}')
-        self.label.setText(f'Voxel Display Boundaries:({self.minSelected},{self.maxSelected})')
+        print(f'Voxel sliders: {self.minDisplayVox}, {self.maxDisplayVox}')
+        self.label.setText(f'Voxel Display Boundaries:({self.minDisplayVox},{self.maxDisplayVox})')
 
     @pyqtSlot(int)
     def handleStartSliderValueChange(self, value):
         self.startSlider.setValue(value)
-        self.minSelected = VOX_MAX_VAL - value  # NOTE: Start slider is reversed in value/direction
-        self.endSlider.setMinimum(self.minSelected)  # Prevents slider range cross over
-        self.triplane.voxDisplayUpdate(self.minSelected, self.maxSelected)
+        self.minDisplayVox = self.convertMinSliderToMinVox(value)
+        self.triplane.voxDisplayUpdate(self.minDisplayVox, self.maxDisplayVox)
         self.updateLabel()
-
 
     @pyqtSlot(int)
     def handleEndSliderValueChange(self, value):
         self.endSlider.setValue(value)
-        self.maxSelected = value
-        self.startSlider.setMinimum(VOX_MAX_VAL - self.maxSelected) # Prevents slider range cross over
+        self.maxDisplayVox = self.convertMaxSliderToMaxVox(value)
         self.updateLabel()
-        self.triplane.voxDisplayUpdate(self.minSelected, self.maxSelected)
+        self.triplane.voxDisplayUpdate(self.minDisplayVox, self.maxDisplayVox)
 
 
 class TriPlaneView(QWidget):
     def __init__(self, data, parent=None):
-
         super(TriPlaneView, self).__init__(parent)
 
         self.data = data
@@ -302,13 +306,13 @@ class TriPlaneView(QWidget):
 
 class LabelSelector(QWidget):
     """label selector"""
+
     def __init__(self):
         pass
 
 
 class PlaneView(QWidget):
     def __init__(self, name, data, volume, numslices, parent=None):
-
         super(PlaneView, self).__init__(parent)
         self.data = data
         label = QLabel()
@@ -357,7 +361,6 @@ class PlaneView(QWidget):
 
     def setSliceLabel(self, value):
         self.slice_num_label.setText(str(value))
-
 
 
 class PlotCanvas(FigureCanvas):
