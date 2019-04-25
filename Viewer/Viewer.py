@@ -57,6 +57,7 @@ class LabelData:
 
 
 class VolumeSelectView(QWidget):
+    """Main window"""
     def __init__(self, parent=None):
         super(VolumeSelectView, self).__init__(parent)
 
@@ -95,7 +96,7 @@ class VolumeSelectView(QWidget):
         self.file_list = QListWidget(self)
         for item in self.niiPaths:
             self.file_list.addItem(item)
-        max_list_width = 600
+        max_list_width = 400
         if self.file_list.sizeHintForColumn(0) < max_list_width:
             max_list_width = self.file_list.sizeHintForColumn(0)
         self.file_list.setMinimumWidth(max_list_width)
@@ -150,23 +151,25 @@ class VolumeSelectView(QWidget):
 
 
 class DisplayRangeSelector(QWidget):
-
+    """The range (dual-value) slider for adjust voxel brightness."""
     def __init__(self, triplane):
         super().__init__()
         self.label = QLabel('Voxel Display Boundaries')
         self.triplane = triplane
         self.startProportion = 0.2  # the start slider's range proportion to the entire range length
-        self.startSliderMaxValue = VOX_MAX_VAL * self.startProportion  # the max value of the start slider
-        self.endSliderMaxValue = VOX_MAX_VAL * (1 - self.startProportion)  # the max value of the end slider
+        self.startSliderMaxValue = int(VOX_MAX_VAL * self.startProportion)  # the max value of the start slider
+        self.endSliderMaxValue = int(VOX_MAX_VAL * (1 - self.startProportion))  # the max value of the end slider
         self.minDisplayVox = 0  # the converted min value for displaying voxel
         self.maxDisplayVox = VOX_MAX_VAL  # the converted max value for displaying voxel
 
         self.setupUi(self)
 
     def convertMinSliderToMinVox(self, value):
+        """Converts the value from the start slider (inverted) to min voxel value"""
         return int(VOX_MAX_VAL * self.startProportion - value)
 
     def convertMaxSliderToMaxVox(self, value):
+        """Converts the value from the end slider to max voxel value"""
         return int(value + VOX_MAX_VAL * self.startProportion)
 
     def setupUi(self, RangeSlider):
@@ -192,8 +195,8 @@ class DisplayRangeSelector(QWidget):
         ## Start Slider Widget
         self.startSlider = QSlider(self.slidersFrame)
         self.startSlider.setMaximum(self.startSliderMaxValue)
-        self.startSlider.setMinimumSize(QSize(100, 5))
-        self.startSlider.setMaximumSize(QSize(16777215, 10))
+        self.startSlider.setMinimumSize(QSize(100, 20))
+        self.startSlider.setMaximumSize(QSize(16777215, 20))
 
         font = QtGui.QFont()
         font.setKerning(True)
@@ -210,8 +213,8 @@ class DisplayRangeSelector(QWidget):
         ## End Slider Widget
         self.endSlider = QSlider(self.slidersFrame)
         self.endSlider.setMaximum(self.endSliderMaxValue)
-        self.endSlider.setMinimumSize(QSize(100, 5))
-        self.endSlider.setMaximumSize(QSize(16777215, 10))
+        self.endSlider.setMinimumSize(QSize(100, 20))
+        self.endSlider.setMaximumSize(QSize(16777215, 20))
         self.endSlider.setTracking(True)
         self.endSlider.setOrientation(Qt.Horizontal)
         self.endSlider.setObjectName("endSlider")
@@ -230,8 +233,8 @@ class DisplayRangeSelector(QWidget):
         self.show()
 
     def updateLabel(self):
-        print(f'Voxel sliders: {self.minDisplayVox}, {self.maxDisplayVox}')
-        self.label.setText(f'Voxel Display Boundaries:({self.minDisplayVox},{self.maxDisplayVox})')
+        # print(f'Voxel sliders: {self.minDisplayVox}, {self.maxDisplayVox}')
+        self.label.setText(f'Voxel Brightness Range:({self.minDisplayVox},{self.maxDisplayVox})')
 
     @pyqtSlot(int)
     def handleStartSliderValueChange(self, value):
@@ -428,8 +431,6 @@ class PlotCanvas(FigureCanvas):
 
     def setData(self, data):
         self.data = data
-        self.maxVoxVal = np.amax(self.data)
-        self.minVoxVal = np.amin(self.data)
 
 
 if __name__ == '__main__':
