@@ -331,7 +331,7 @@ class PlaneView(QWidget):
         # self.slider.setSingleStep(1)
         self.slider.setMinimum(0)
         self.slider.setMaximum(numSlices)
-        self.slider.valueChanged.connect(self.value_changed)
+        self.slider.valueChanged.connect(self.valueChanged)
 
         self.canvas = PlotCanvas(name, self.data, volume)
         vbox = QVBoxLayout()
@@ -345,7 +345,7 @@ class PlaneView(QWidget):
     def setSlider(self, value):
         self.slider.setValue(value)
 
-    def value_changed(self, value):
+    def valueChanged(self, value):
         self.canvas.setSliceIndex(value)
         self.setSliceLabel(value)
 
@@ -382,7 +382,7 @@ class PlotCanvas(FigureCanvas):
         self.setParent(parent)
         FigureCanvas.setSizePolicy(self, QSizePolicy.Expanding, QSizePolicy.Expanding)
         FigureCanvas.updateGeometry(self)
-        self.currentSlice = 0
+        self.currentSliceNum = 0
         self.ax = self.figure.add_subplot(111)
         self.plot()
 
@@ -391,11 +391,11 @@ class PlotCanvas(FigureCanvas):
         self.plot()
 
     def forwards(self):
-        self.currentSlice += 1
+        self.currentSliceNum += 1
         self.plot()
 
     def setSliceIndex(self, value):
-        self.currentSlice = value
+        self.currentSliceNum = value
         self.plot()
 
     def setMinVoxVal(self, value):
@@ -410,19 +410,19 @@ class PlotCanvas(FigureCanvas):
 
         if self.sliceType == "Axial":
 
-            curslice = self.data[:, :, self.currentSlice, self.volume]
-            self.ax.imshow(curslice.T, cmap="gray", origin="lower", vmin=self.minVoxVal, vmax=self.maxVoxVal)
+            curSlice = self.data[:, :, self.currentSliceNum, self.volume]
+            self.ax.imshow(curSlice.T, cmap="gray", origin="lower", vmin=self.minVoxVal, vmax=self.maxVoxVal)
 
         elif self.sliceType == "Sagittal":
 
-            curslice = self.data[self.currentSlice, :, :, self.volume]
-            self.ax.imshow(curslice.T, cmap="gray", origin="lower", aspect=256.0 / 54.0, vmin=self.minVoxVal,
+            curSlice = self.data[self.currentSliceNum, :, :, self.volume]
+            self.ax.imshow(curSlice.T, cmap="gray", origin="lower", aspect=256.0 / 54.0, vmin=self.minVoxVal,
                            vmax=self.maxVoxVal)
 
         elif self.sliceType == "Coronal":
 
-            curslice = self.data[:, self.currentSlice, :, self.volume]
-            self.ax.imshow(curslice.T, cmap="gray", origin="lower", aspect=256.0 / 54.0, vmin=self.minVoxVal,
+            curSlice = self.data[:, self.currentSliceNum, :, self.volume]
+            self.ax.imshow(curSlice.T, cmap="gray", origin="lower", aspect=256.0 / 54.0, vmin=self.minVoxVal,
                            vmax=self.maxVoxVal)
 
         self.draw()
