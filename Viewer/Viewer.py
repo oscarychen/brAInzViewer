@@ -10,12 +10,11 @@ from matplotlib.figure import Figure
 import nibabel as nib
 import sys
 import os
-import numpy as np
 
 VOX_MAX_VAL = 2500
 
 
-class LabelData:
+class LabelTypes:
     """A class that holds label data"""
 
     def __init__(self):
@@ -56,21 +55,126 @@ class LabelData:
             self.labelData[category] = labels
 
 
-class LabelSelector(QWidget):
+class LabelsView(QWidget):
     """label selector"""
 
     def __init__(self):
-        self.dataLabelClass = None
+        self.labelTypes = None
 
-    def setDataLabelClass(self, dataLabels):
-        self.dataLabelClass = dataLabels
+    def setDataLabelTypes(self, labelTypes):
+        self.labelTypes = labelTypes
 
 
-class VolumeSelectView(QWidget):
+class Controller:
+
+    def __init__(self):
+        self.data = None
+        self.niiPaths = None
+        self.openFolder()
+
+        self.brightnessSelector = DisplayBrightnessSelectorView()
+        self.axialView = PlaneView(self, "Axial", 0, self.data.shape[2] - 1)  # name, data, volume #, slice #
+        self.sagittalView = PlaneView(self, "Sagittal", 0, self.data.shape[0] - 1)
+        self.coronalView = PlaneView(self, "Coronal", 0, self.data.shape[1] - 1)
+        self.triPlaneView = TriPlaneView(self.axialView, self.sagittalView, self.coronalView)
+        self.fileListView = FileListView(self.niiPaths)
+        self.view = View(self.triPlaneView, self.fileListView, self.brightnessSelector)
+        self.setController()
+        self.showView()
+
+    def setController(self):
+        self.view.setController(self)
+        self.brightnessSelector.setController(self)
+        # self.axialView.setController(self)
+        # self.sagittalView.setController(self)
+        # self.coronalView.setController(self)
+        self.triPlaneView.setController(self)
+        self.fileListView.setController(self)
+
+    def updateVoxDisplayRange(self, minValue, maxValue):
+        self.axialView.canvas.setMinVoxVal(minValue)
+        self.axialView.canvas.setMaxVoxVal(maxValue)
+        self.coronalView.canvas.setMinVoxVal(minValue)
+        self.coronalView.canvas.setMaxVoxVal(maxValue)
+        self.sagittalView.canvas.setMinVoxVal(minValue)
+        self.sagittalView.canvas.setMaxVoxVal(maxValue)
+        self.replot()
+
+    def replot(self):
+        self.axialView.setMaxSlider(self.data.shape[2]-1)
+        self.axialView.replot()
+        self.sagittalView.setMaxSlider(self.data.shape[0]-1)
+        self.sagittalView.replot()
+        self.coronalView.setMaxSlider(self.data.shape[1]-1)
+        self.coronalView.replot()
+
+    def clearPlot(self):
+        self.axialView.clearPlot()
+        self.sagittalView.clearPlot()
+        self.coronalView.clearPlot()
+
+    def selectFile(self, file):
+        self.clearPlot()
+        nii = nib.load(file)
+        self.data = nii.get_fdata()
+        self.view.fileLabel.setText(file)
+        self.replot()
+
+    def openFolder(self):
+        folder = QFileDialog.getExistingDirectory(None, caption='Select folder to open', directory='../')
+        if folder:
+            self.niiPaths = self.getNiiFilePaths(folder)
+            if len(self.niiPaths) == 0:
+                QMessageBox.about(self, "Error", "No Nii Files Found")
+                print("No Nii Files Found")
+                exit(0)
+            file = self.niiPaths[0]
+            nii = nib.load(file)
+            self.data = nii.get_fdata()
+        else:
+            exit(0)
+
+    def getNiiFilePaths(self, folder):
+        """Scan the folder and its sub-dirs, return a list of .nii files found."""
+        niiList = []
+        for dirpaths, dirs, files in os.walk(folder):
+            for file in files:
+                if file.endswith('.nii'):
+                    filePath = os.path.join(dirpaths, file)
+                    niiList.append(filePath)
+        return niiList
+
+    def showView(self):
+        self.view.show()
+
+
+class FileListView(QListWidget):
+    def __init__(self, niiPaths):
+        super(FileListView, self).__init__()
+        self.controller = None
+        # self.fileList = QListWidget(self)
+        for item in niiPaths:
+            self.addItem(item)
+        maxListWidth = 400
+        if self.sizeHintForColumn(0) < maxListWidth:
+            maxListWidth = self.sizeHintForColumn(0)
+        self.setMinimumWidth(maxListWidth)
+        self.itemSelectionChanged.connect(self.selectedFileChanged)
+
+    def setController(self, controller):
+        self.controller = controller
+
+    def selectedFileChanged(self):
+        file = self.currentItem().text()
+        self.controller.selectFile(file)
+
+
+class View(QWidget):
     """Main window"""
-    def __init__(self, parent=None):
-        super(VolumeSelectView, self).__init__(parent)
+    def __init__(self, triPlaneView, fileListView, brightnessSelector, parent=None):
+        super(View, self).__init__(parent)
 
+        self.controller = None
         self.setWindowTitle("Nii Viewer and Labeler")
         self.resize(1280, 600)
 
@@ -83,15 +187,11 @@ class VolumeSelectView(QWidget):
         self.slider.setTickInterval(1)
         # self.slider.setSingleStep(1)
         self.slider.setMinimum(0)
-        self.slider.valueChanged.connect(self.set_volume)
+        self.slider.valueChanged.connect(self.setVolume)
 
-        self.data = None
-        self.niiPaths = None
-        self.openFolderDialog()
 
-        self.triplane = TriPlaneView(self.data)
         self.volumeLabel.setText('0')
-        self.slider.setMaximum(self.data.shape[3] - 1)
+        # self.slider.setMaximum(self.data.shape[3] - 1)
         # self.slider.setMaximum(35)
 
         # Left-half: data display area
@@ -99,29 +199,15 @@ class VolumeSelectView(QWidget):
         vbox.addWidget(self.fileLabel)
         vbox.addWidget(self.volumeLabel)
         vbox.addWidget(self.slider)
-        vbox.addWidget(self.triplane)
-        vbox.addWidget(DisplayRangeSelector(self.triplane))
+        vbox.addWidget(triPlaneView)
+        vbox.addWidget(brightnessSelector)
 
         # Right-half: file list area
-        self.file_list = QListWidget(self)
-        for item in self.niiPaths:
-            self.file_list.addItem(item)
-        max_list_width = 400
-        if self.file_list.sizeHintForColumn(0) < max_list_width:
-            max_list_width = self.file_list.sizeHintForColumn(0)
-        self.file_list.setMinimumWidth(max_list_width)
-        self.file_list.itemSelectionChanged.connect(self.selectedFileChanged)
-
         hbox = QHBoxLayout()
         hbox.addLayout(vbox)
-        hbox.addWidget(self.file_list)
+        hbox.addWidget(fileListView)
         self.setLayout(hbox)
 
-    def selectedFileChanged(self):
-        self.triplane.clearPlot()
-        self.changeNiiFile(self.file_list.currentItem().text())
-        self.triplane.setData(self.data)
-        self.triplane.replot()
 
     def changeNiiFile(self, file):
         # print("Debug: Opening file: " + file)
@@ -130,48 +216,50 @@ class VolumeSelectView(QWidget):
         # print("Data loaded: " + str(self.data.shape))
         self.fileLabel.setText(file)
 
-    def openFolderDialog(self):
-        folder = QFileDialog.getExistingDirectory(self, caption='Select folder to open', directory='../')
-        if folder:
-            self.niiPaths = self.getNiiPaths(folder)
-            if len(self.niiPaths) == 0:
-                QMessageBox.about(self, "Error", "No Nii Files Found")
-                print("No Nii Files Found")
-                exit(0)
-            file = self.niiPaths[0]
-            self.changeNiiFile(file)
-        else:
-            exit(0)
+    # def openFolderDialog(self):
+        # folder = QFileDialog.getExistingDirectory(self, caption='Select folder to open', directory='../')
+        # if folder:
+        #     self.niiPaths = self.getNiiPaths(folder)
+        #     if len(self.niiPaths) == 0:
+        #         QMessageBox.about(self, "Error", "No Nii Files Found")
+        #         print("No Nii Files Found")
+        #         exit(0)
+        #     file = self.niiPaths[0]
+        #     self.changeNiiFile(file)
+        # else:
+        #     exit(0)
 
-    def getNiiPaths(self, folder):
-        """Scan the folder and its sub-dirs, return a list of .nii files found."""
-        niiList = []
-        for dirpaths, dirs, files in os.walk(folder):
-            for file in files:
-                if file.endswith('.nii'):
-                    filePath = os.path.join(dirpaths, file)
-                    niiList.append(filePath)
-        return niiList
+    def setController(self, controller):
+        self.controller = controller
 
-    def set_volume(self, value):
+    # def getNiiPaths(self, folder):
+    #     """Scan the folder and its sub-dirs, return a list of .nii files found."""
+    #     niiList = []
+    #     for dirpaths, dirs, files in os.walk(folder):
+    #         for file in files:
+    #             if file.endswith('.nii'):
+    #                 filePath = os.path.join(dirpaths, file)
+    #                 niiList.append(filePath)
+    #     return niiList
+
+    def setVolume(self, value):
         self.volumeLabel.setText(str(value))
-        self.triplane.axialView.setVolume(value)
-        self.triplane.sagittalView.setVolume(value)
-        self.triplane.coronalView.setVolume(value)
+        self.triPlaneView.axialView.setVolume(value)
+        self.triPlaneView.sagittalView.setVolume(value)
+        self.triPlaneView.coronalView.setVolume(value)
 
 
-class DisplayRangeSelector(QWidget):
+class DisplayBrightnessSelectorView(QWidget):
     """The range (dual-value) slider for adjust voxel brightness."""
-    def __init__(self, triplane):
+    def __init__(self):
         super().__init__()
         self.label = QLabel('Voxel Display Boundaries')
-        self.triplane = triplane
         self.startProportion = 0.1  # the start slider's range proportion to the entire range length
         self.startSliderMaxValue = int(VOX_MAX_VAL * self.startProportion)  # the max value of the start slider
         self.endSliderMaxValue = int(VOX_MAX_VAL * (1 - self.startProportion))  # the max value of the end slider
         self.minDisplayVox = 0  # the converted min value for displaying voxel
         self.maxDisplayVox = VOX_MAX_VAL  # the converted max value for displaying voxel
-
+        self.controller = None
         self.setupUi(self)
 
     def convertMinSliderToMinVox(self, value):
@@ -250,77 +338,44 @@ class DisplayRangeSelector(QWidget):
     def handleStartSliderValueChange(self, value):
         self.startSlider.setValue(value)
         self.minDisplayVox = self.convertMinSliderToMinVox(value)
-        self.triplane.voxDisplayUpdate(self.minDisplayVox, self.maxDisplayVox)
         self.updateLabel()
+        self.controller.updateVoxDisplayRange(self.minDisplayVox, self.maxDisplayVox)
+
 
     @pyqtSlot(int)
     def handleEndSliderValueChange(self, value):
         self.endSlider.setValue(value)
         self.maxDisplayVox = self.convertMaxSliderToMaxVox(value)
         self.updateLabel()
-        self.triplane.voxDisplayUpdate(self.minDisplayVox, self.maxDisplayVox)
+        self.controller.updateVoxDisplayRange(self.minDisplayVox, self.maxDisplayVox)
+
+    def setController(self, controller):
+        self.controller = controller
 
 
 class TriPlaneView(QWidget):
-    def __init__(self, data, parent=None):
+    def __init__(self, axial, sagittal, coronal, parent=None):
         super(TriPlaneView, self).__init__(parent)
 
-        self.data = data
+        self.controller = None
         grid = QGridLayout()
-        self.axialView = PlaneView("Axial", self.data, 0, self.data.shape[2] - 1)  # name, data, volume #, slice #
-        self.sagittalView = PlaneView("Sagittal", self.data, 0, self.data.shape[0] - 1)
-        self.coronalView = PlaneView("Coronal", self.data, 0, self.data.shape[1] - 1)
-        grid.addWidget(self.axialView, 0, 0)
-        grid.addWidget(self.sagittalView, 0, 1)
-        grid.addWidget(self.coronalView, 0, 2)
+        grid.addWidget(axial, 0, 0)
+        grid.addWidget(sagittal, 0, 1)
+        grid.addWidget(coronal, 0, 2)
 
         self.setLayout(grid)
 
-        self.axialView.setSlider(self.data.shape[2] // 2)  # Initial slider position
-        self.sagittalView.setSlider(self.data.shape[0] // 2)  # Initial slider position
-        self.coronalView.setSlider(self.data.shape[1] // 2)  # Initial slider position
-
-    def voxDisplayUpdate(self, minValue, maxValue):
-        self.axialView.canvas.setMinVoxVal(minValue)
-        self.axialView.canvas.setMaxVoxVal(maxValue)
-        self.coronalView.canvas.setMinVoxVal(minValue)
-        self.coronalView.canvas.setMaxVoxVal(maxValue)
-        self.sagittalView.canvas.setMinVoxVal(minValue)
-        self.sagittalView.canvas.setMaxVoxVal(maxValue)
-        self.replot()
-
-    def replot(self):
-        # print('Debug: Update axial slider max to ' + str(self.data.shape[2]-1))
-        self.axialView.setMaxSlider(self.data.shape[2] - 1)
-        self.axialView.setSlider(self.data.shape[2] // 2)  # Slider position when loading a new file
-        self.axialView.replot()
-
-        # print('Debug: Update sagittal slider max to ' + str(self.data.shape[0] - 1))
-        self.sagittalView.setMaxSlider(self.data.shape[0] - 1)
-        self.sagittalView.setSlider(self.data.shape[0] // 2)
-        self.sagittalView.replot()
-
-        # print('Debug: Update coronal slider max to ' + str(self.data.shape[1] - 1))
-        self.coronalView.setMaxSlider(self.data.shape[1] - 1)
-        self.coronalView.setSlider(self.data.shape[1] // 2)
-        self.coronalView.replot()
-
-    def clearPlot(self):
-        self.axialView.clearPlot()
-        self.sagittalView.clearPlot()
-        self.coronalView.clearPlot()
-
     def setData(self, data):
         self.data = data
-        self.axialView.setData(data)
-        self.sagittalView.setData(data)
-        self.coronalView.setData(data)
+
+    def setController(self, controller):
+        self.controller = controller
 
 
 class PlaneView(QWidget):
-    def __init__(self, name, data, volume, numSlices, parent=None):
+    def __init__(self, controller, name, volume, numSlices, parent=None):
         super(PlaneView, self).__init__(parent)
-        self.data = data
+        self.controller = controller
         label = QLabel()
         label.setText(name)
         self.sliceNumberLabel = QLabel()
@@ -331,9 +386,10 @@ class PlaneView(QWidget):
         # self.slider.setSingleStep(1)
         self.slider.setMinimum(0)
         self.slider.setMaximum(numSlices)
+        self.slider.setValue(0)
         self.slider.valueChanged.connect(self.valueChanged)
 
-        self.canvas = PlotCanvas(name, self.data, volume)
+        self.canvas = PlotCanvas(self.controller, name, volume)
         vbox = QVBoxLayout()
         vbox.addWidget(label)
         vbox.addWidget(self.sliceNumberLabel)
@@ -358,28 +414,27 @@ class PlaneView(QWidget):
     def clearPlot(self):
         self.canvas.clearPlot()
 
-    def setData(self, data):
-        self.data = data
-        self.canvas.setData(data)
-
     def setMaxSlider(self, value):
+        self.setSlider(0)
         self.slider.setMaximum(value)
 
     def setSliceLabel(self, value):
         self.sliceNumberLabel.setText(str(value))
 
+    # def setController(self, controller):
+    #     self.controller = controller
+
 
 class PlotCanvas(FigureCanvas):
-    def __init__(self, sliceType, data, volume, parent=None):
+    def __init__(self, controller, sliceType, volume, parent=None):
 
+        self.controller = controller
         self.sliceType = sliceType
-        self.data = data
-        self.maxVoxVal = np.amax(self.data)
-        self.minVoxVal = np.amin(self.data)
+        self.maxVoxVal = 0
+        self.minVoxVal = 0
         self.volume = volume
         fig = Figure()
         FigureCanvas.__init__(self, fig)
-        self.setParent(parent)
         FigureCanvas.setSizePolicy(self, QSizePolicy.Expanding, QSizePolicy.Expanding)
         FigureCanvas.updateGeometry(self)
         self.currentSliceNum = 0
@@ -410,18 +465,18 @@ class PlotCanvas(FigureCanvas):
 
         if self.sliceType == "Axial":
 
-            curSlice = self.data[:, :, self.currentSliceNum, self.volume]
+            curSlice = self.controller.data[:, :, self.currentSliceNum, self.volume]
             self.ax.imshow(curSlice.T, cmap="gray", origin="lower", vmin=self.minVoxVal, vmax=self.maxVoxVal)
 
         elif self.sliceType == "Sagittal":
 
-            curSlice = self.data[self.currentSliceNum, :, :, self.volume]
+            curSlice = self.controller.data[self.currentSliceNum, :, :, self.volume]
             self.ax.imshow(curSlice.T, cmap="gray", origin="lower", aspect=256.0 / 54.0, vmin=self.minVoxVal,
                            vmax=self.maxVoxVal)
 
         elif self.sliceType == "Coronal":
 
-            curSlice = self.data[:, self.currentSliceNum, :, self.volume]
+            curSlice = self.controller.data[:, self.currentSliceNum, :, self.volume]
             self.ax.imshow(curSlice.T, cmap="gray", origin="lower", aspect=256.0 / 54.0, vmin=self.minVoxVal,
                            vmax=self.maxVoxVal)
 
@@ -432,13 +487,8 @@ class PlotCanvas(FigureCanvas):
         self.ax.set_axis_off()
         self.draw()
 
-    def setData(self, data):
-        self.data = data
-
-
 if __name__ == '__main__':
     app = QApplication(sys.argv)
 
-    window = VolumeSelectView()
-    window.show()
+    controller = Controller()
     sys.exit(app.exec_())
