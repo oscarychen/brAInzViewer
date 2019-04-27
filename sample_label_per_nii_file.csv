@@ -1,0 +1,11 @@
+slice_sagittal,slice_coronal,slice_axial,volume,labels,comment
+,5,,0,Blur,this is an example of label for volume 0 and coronal slice 5 having a blur image
+1,,,4,Gap/Staircase,this is an example of label for volume 4 and sagittal slice 1 having a gap and staircase
+,,3,7,Blur/Gap/Staircase,multiple labels are separated by /
+,,4,7,Blur,
+,,5,7,Blur,
+,,6,7,Blur,
+,3,,10,Gap,
+,,6,7,Blur,the order of slicing format is consistent with how you would get to the slice using NiBabel and Numpy
+,3,,10,Gap,also the first line will always be a header as shown above and can be ignored
+,,12,10,Gap,one last thing to note is that the naming convention of this file will be same as the nii file but with csv extention
