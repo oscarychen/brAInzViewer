@@ -26,9 +26,9 @@ class LabelTypes:
         """Return list of keys"""
         return self.labelData.keys()
 
-    def getLabelValueByKey(self, category):
+    def getLabelValueByKey(self, key):
         """Return list of values for a given key"""
-        return self.labelData.get(category, default=None)
+        return self.labelData[key]
 
     def addKey(self, category):
         """Add a new category"""
@@ -55,17 +55,6 @@ class LabelTypes:
             self.labelData[category] = labels
 
 
-class LabelsView(QWidget):
-    """label selector"""
-
-    def __init__(self, parent=None):
-        super(LabelsView, self).__init__()
-        self.labelTypes = None
-
-    def setDataLabelTypes(self, labelTypes):
-        self.labelTypes = labelTypes
-
-
 class Controller:
 
     def __init__(self):
@@ -79,10 +68,16 @@ class Controller:
         self.coronalSliceNum = 0
         self.volumeNum = 0
 
+        self.labels = LabelTypes()
         self.brightnessSelector = DisplayBrightnessSelectorView(self)
-        self.axialView = PlaneView(self, "Axial", self.volumeNum, self.axialSliceNum)
-        self.sagittalView = PlaneView(self, "Sagittal", self.volumeNum, self.sagittalSliceNum)
-        self.coronalView = PlaneView(self, "Coronal", self.volumeNum, self.coronalSliceNum)
+
+        self.axialLabelView = LabelView(self, 'Axial', self.labels)
+        self.sagittalLabelView = LabelView(self, 'Sagittal', self.labels)
+        self.coronalLabelView = LabelView(self, 'Coronal', self.labels)
+
+        self.axialView = SliceView(self, "Axial", self.axialSliceNum, self.axialLabelView)
+        self.sagittalView = SliceView(self, "Sagittal", self.sagittalSliceNum, self.sagittalLabelView)
+        self.coronalView = SliceView(self, "Coronal", self.coronalSliceNum, self.coronalLabelView)
         self.triPlaneView = TriPlaneView(self.axialView, self.sagittalView, self.coronalView)
         self.fileListView = FileListView(self, self.niiPaths)
         self.volumeSelectView = VolumeSelectView(self, self.triPlaneView, self.fileListView, self.brightnessSelector)
@@ -141,7 +136,6 @@ class Controller:
         if self.volumeNum >= self.data.shape[3]:
             self.volumeNum = self.data.shape[3] - 1
 
-
     def changeFile(self, file):
         """Gets called by the FileListView when a file selection is changed"""
         self.fileSelected = file
@@ -161,7 +155,7 @@ class Controller:
         self.updateViews()
 
     def changeSliceNum(self, name, sliceNum):
-        """Gets called by the PlaneView when slice slider is moved"""
+        """Gets called by the SliceView when slice slider is moved"""
         if name == 'Axial':
             self.axialSliceNum = sliceNum
             self.updateAxialView()
@@ -233,6 +227,28 @@ class Controller:
         elif sliceType == 'Coronal':
             return self.data[:, self.coronalSliceNum, :, self.volumeNum]
 
+class LabelView(QWidget):
+    """label selector"""
+
+    def __init__(self, controller, sliceType, labelTypes, parent=Controller):
+        super(LabelView, self).__init__()
+        self.controller = controller
+        self.sliceType = sliceType
+        self.labelTypes = labelTypes
+        self.initUI()
+
+    def initUI(self):
+        grid = QGridLayout()
+        self.setLayout(grid)
+
+        labels = self.labelTypes.getLabelValueByKey('Motion Types')
+        positions = [(row,col) for row in range(5) for col in range(2)]
+
+        for position, label in zip(positions,labels):
+            button = QPushButton(label)
+            grid.addWidget(button, *position)
+
+        self.show()
 
 class FileListView(QListWidget):
     def __init__(self, controller, niiPaths, parent=Controller):
@@ -425,11 +441,11 @@ class TriPlaneView(QWidget):
         self.setLayout(grid)
 
 
-class PlaneView(QWidget):
+class SliceView(QWidget):
     """Wrapper class for PlotCanvas class, contains slider to adjust slices"""
 
-    def __init__(self, controller, sliceType, numSlices, parent=Controller):
-        super(PlaneView, self).__init__()
+    def __init__(self, controller, sliceType, numSlices, labelView, parent=Controller):
+        super(SliceView, self).__init__()
         self.controller = controller
         self.sliceType = sliceType
         label = QLabel()
@@ -451,6 +467,7 @@ class PlaneView(QWidget):
         vbox.addWidget(self.sliceNumberLabel)
         vbox.addWidget(self.slider)
         vbox.addWidget(self.canvas)
+        vbox.addWidget(labelView)
         vbox.addStretch(1)
         self.setLayout(vbox)
 
