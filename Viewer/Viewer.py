@@ -10,55 +10,19 @@ from matplotlib.figure import Figure
 import nibabel as nib
 import sys
 import os
+from threading import Lock
 
 VOX_MAX_VAL = 2500
-
-
-class LabelTypes:
-    """A class that holds label typing data"""
-
-    def __init__(self):
-        self.labelData = dict()
-        # Key: label category, Value: list of labels the category
-        self.labelData = {'Motion Types': ['Blur', 'Gap/Line', 'Dimmed', 'Tunneling']}
-
-    def getLabelKeys(self):
-        """Return list of keys"""
-        return self.labelData.keys()
-
-    def getLabelValueByKey(self, key):
-        """Return list of values for a given key"""
-        return self.labelData[key]
-
-    def addKey(self, category):
-        """Add a new category"""
-        if category not in self.labelData:
-            self.labelData[category] = None
-
-    def removeKey(self, category):
-        """Remove a category"""
-        if category in self.labelData:
-            del self.labelData[category]
-
-    def addKeyValue(self, category, label):
-        """Adds a label to an existing category's list of labels"""
-        labels = self.labelData[category]
-        if label not in labels:
-            labels.append(label)
-            self.labelData[category] = labels
-
-    def removeValue(self, category, label):
-        """Removes a label from an existing category's list of labels"""
-        labels = self.labelData[category]
-        if label in labels:
-            labels.remove(label)
-            self.labelData[category] = labels
-
+viewUpdateLock = Lock()
+labelWriteLock = Lock()
 
 class Controller:
 
     def __init__(self):
         self.data = None
+        self.labelTypes = LabelTypes()
+        self.labelData = LabelData()
+
         self.niiPaths = list()
         self.openFolder()
         self.fileSelected = None
@@ -68,12 +32,11 @@ class Controller:
         self.coronalSliceNum = 0
         self.volumeNum = 0
 
-        self.labels = LabelTypes()
         self.brightnessSelector = DisplayBrightnessSelectorView(self)
 
-        self.axialLabelView = LabelView(self, 'Axial', self.labels)
-        self.sagittalLabelView = LabelView(self, 'Sagittal', self.labels)
-        self.coronalLabelView = LabelView(self, 'Coronal', self.labels)
+        self.axialLabelView = LabelView(self, 'Axial', self.labelTypes)
+        self.sagittalLabelView = LabelView(self, 'Sagittal', self.labelTypes)
+        self.coronalLabelView = LabelView(self, 'Coronal', self.labelTypes)
 
         self.axialView = SliceView(self, "Axial", self.axialSliceNum, self.axialLabelView)
         self.sagittalView = SliceView(self, "Sagittal", self.sagittalSliceNum, self.sagittalLabelView)
@@ -82,6 +45,7 @@ class Controller:
         self.fileListView = FileListView(self, self.niiPaths)
         self.volumeSelectView = VolumeSelectView(self, self.triPlaneView, self.fileListView, self.brightnessSelector)
         self.fileListView.setCurrentRow(0)
+
 
         self.showView()
 
@@ -102,6 +66,7 @@ class Controller:
             self.fileSelected = self.niiPaths[0]
             nii = nib.load(self.fileSelected)
             self.data = nii.get_fdata()
+            self.labelData.setFilePath(self.fileSelected)
         else:
             exit(0)
 
@@ -144,6 +109,9 @@ class Controller:
         self.volumeSelectView.fileLabel.setText(file)
         self.volumeSelectView.setMaxSlider(self.data.shape[3] - 1)
 
+        self.labelData.saveToFile()     # save labelData to csv, and reset labelData
+        self.labelData.setFilePath(self.fileSelected) # set labelData to read new file
+
         self.checkSelectionRanges()
         self.updateViews()
 
@@ -154,8 +122,18 @@ class Controller:
         self.checkSelectionRanges()
         self.updateViews()
 
+    def changeLabel(self, sliceType, label, value):
+        sliceNum = self.getSliceNum(sliceType)
+        self.labelData.setLabel(self.volumeNum, sliceType, sliceNum, label, value)
+
+    def getLabelsForSlice(self, sliceType):
+        """Returns a dictionary of Labels and their values"""
+        sliceNum = self.getSliceNum(sliceType)
+        return self.labelData.getLabels(self.volumeNum, sliceType, sliceNum)
+
     def changeSliceNum(self, name, sliceNum):
         """Gets called by the SliceView when slice slider is moved"""
+
         if name == 'Axial':
             self.axialSliceNum = sliceNum
             self.updateAxialView()
@@ -168,7 +146,7 @@ class Controller:
 
     def updateViews(self):
         """Updates View classes"""
-
+        viewUpdateLock.acquire()
         self.volumeSelectView.updateView(self.volumeNum, self.fileSelected)
 
         self.axialView.setMaxSlider(self.data.shape[2] - 1)
@@ -178,23 +156,27 @@ class Controller:
         self.updateAxialView()
         self.updateSagittalView()
         self.updateCoronalView()
+        viewUpdateLock.release()
 
     def updateAxialView(self):
         self.axialView.canvas.setSliceIndex(self.axialSliceNum)
         self.axialView.setSliceLabel(self.axialSliceNum)
         self.axialView.setSlider(self.axialSliceNum)
+        self.axialLabelView.updateButtons(self.getLabelsForSlice('Axial'))
         self.axialView.canvas.plot(self.getPlotData('Axial'))
 
     def updateSagittalView(self):
         self.sagittalView.canvas.setSliceIndex(self.sagittalSliceNum)
         self.sagittalView.setSliceLabel(self.sagittalSliceNum)
         self.sagittalView.setSlider(self.sagittalSliceNum)
+        self.sagittalLabelView.updateButtons(self.getLabelsForSlice('Sagittal'))
         self.sagittalView.canvas.plot(self.getPlotData('Sagittal'))
 
     def updateCoronalView(self):
         self.coronalView.canvas.setSliceIndex(self.coronalSliceNum)
         self.coronalView.setSliceLabel(self.coronalSliceNum)
         self.coronalView.setSlider(self.coronalSliceNum)
+        self.coronalLabelView.updateButtons(self.getLabelsForSlice('Coronal'))
         self.coronalView.canvas.plot(self.getPlotData('Coronal'))
 
     def getSliceNum(self, sliceType):
@@ -227,6 +209,91 @@ class Controller:
         elif sliceType == 'Coronal':
             return self.data[:, self.coronalSliceNum, :, self.volumeNum]
 
+
+class LabelTypes:
+    """A class that holds label typing data"""
+
+    def __init__(self):
+        self.labelData = dict()
+        # Key: label category, Value: list of labels the category
+        self.labelData = {'Labels': ['Blur', 'Gap/Line', 'Dimmed', 'Tunneling']}
+
+    def getLabelKeys(self):
+        """Return list of keys"""
+        return self.labelData.keys()
+
+    def getLabelValueByKey(self, key):
+        """Return list of values for a given key"""
+        return self.labelData[key]
+
+    def addKey(self, category):
+        """Add a new category"""
+        if category not in self.labelData:
+            self.labelData[category] = list()
+
+    def removeKey(self, category):
+        """Remove a category"""
+        if category in self.labelData:
+            del self.labelData[category]
+
+    def addKeyValue(self, category, label):
+        """Adds a label to an existing category's list of labels"""
+        labels = self.labelData[category]
+        if label not in labels:
+            labels.append(label)
+            self.labelData[category] = labels
+
+    def removeValue(self, category, label):
+        """Removes a label from an existing category's list of labels"""
+        labels = self.labelData[category]
+        if label in labels:
+            labels.remove(label)
+            self.labelData[category] = labels
+
+
+class LabelData:
+    """Keeps the current instance's label data for the .nii file that is open.
+    This object is shared across all volumes for a given .nii file so that we don't save/read from disk each time
+    the volume slider is moved, and allowing smooth scrubbing of the volume slider"""
+    def __init__(self):
+        self.filePath = None
+        self.labelData = dict()   # Key: (volume, sliceType, sliceNum), Value: a dictionary containing label and values
+
+    def getLabelByVolumeNumber(self, volumeNum):
+        return self.labelData[volumeNum]
+
+    def setFilePath(self, file):
+        self.filePath = file
+
+    def saveToFile(self):
+        pass ##TODO: save data to csv
+        self.clear()
+
+    def clear(self):
+        self.labelData.clear()
+
+    def setLabel(self, volume, sliceType, sliceNum, label, value):
+        """Set a single label for a slice"""
+
+        labelWriteLock.acquire()
+        sliceLabels = dict()
+        if (volume, sliceType, sliceNum) in self.labelData.keys():
+            sliceLabels = self.labelData[(volume, sliceType, sliceNum)]
+        else:
+            sliceLabels[label] = value
+        self.labelData[(volume, sliceType, sliceNum)] = sliceLabels
+        labelWriteLock.release()
+
+    def getLabels(self, volume, sliceType, sliceNum):
+        """Get values of all labels for a slice"""
+        sliceLabels = dict()
+
+        if (volume, sliceType, sliceNum) in self.labelData.keys():
+            sliceLabels= self.labelData[(volume, sliceType, sliceNum)]
+
+        return sliceLabels
+
+
 class LabelView(QWidget):
     """label selector"""
 
@@ -235,20 +302,63 @@ class LabelView(QWidget):
         self.controller = controller
         self.sliceType = sliceType
         self.labelTypes = labelTypes
+        self.grid = QGridLayout()
+        self.buttons = list()
         self.initUI()
 
     def initUI(self):
-        grid = QGridLayout()
-        self.setLayout(grid)
 
-        labels = self.labelTypes.getLabelValueByKey('Motion Types')
-        positions = [(row,col) for row in range(5) for col in range(2)]
+        self.setLayout(self.grid)
 
-        for position, label in zip(positions,labels):
+        # get list of buttons
+        labels = self.labelTypes.getLabelValueByKey('Labels')
+
+        positions = [(row, col) for row in range(5) for col in range(2)]
+
+        # populate buttons in view
+        for position, label in zip(positions, labels):
             button = QPushButton(label)
-            grid.addWidget(button, *position)
+            self.buttons.append(button)
+            button.setCheckable(True)
+
+            button.setStyleSheet("color: black; background-color: rgb(150,170,200);")
+            # button.setStyleSheet("QPushButton#DCButton:checked {color: black; background-color: green;")
+
+            button.clicked[bool].connect(self.button_clicked)
+            self.grid.addWidget(button, *position)
 
         self.show()
+
+    def updateButtons(self, labels):
+        """Called by Controller to update button state from labels
+        (of type dictionary, key: label, value: label value)"""
+        for button in self.buttons:
+            button.setChecked(False)
+            if button.text() in labels.keys() and labels[button.text()] is True:
+                button.setChecked(True)
+
+
+    @pyqtSlot()
+    def button_clicked(self):
+        source = self.sender()
+        buttonText = source.text()
+        buttonStates = self.controller.getLabelsForSlice(self.sliceType)
+
+        for labelKey in self.labelTypes.getLabelKeys():  # for each label category
+            for labelType in self.labelTypes.getLabelValueByKey(labelKey):  # for each label in the category
+
+                if labelType == buttonText:  # button correspond to a label
+
+                    if labelType in buttonStates.keys():
+                        buttonStates[buttonText] = not (buttonStates[buttonText])  # flip the boolean
+                    else:
+                        buttonStates[buttonText] = True    # add label
+
+                    self.controller.changeLabel(self.sliceType, buttonText, buttonStates[buttonText])
+                    break
+
+        # print(f'Button {buttonText} set to {self.buttonStates[buttonText]}')
+
 
 class FileListView(QListWidget):
     def __init__(self, controller, niiPaths, parent=Controller):
