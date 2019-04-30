@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QMenu, QVBoxLayout, QSizePolicy, QMessageBox,
-                             QWidget, QPushButton, QSlider, QHBoxLayout, QGroupBox, QRadioButton,
+                             QWidget, QPushButton, QSlider, QHBoxLayout, QGroupBox, QRadioButton, QErrorMessage,
                              QGridLayout, QLabel, QInputDialog, QFileDialog, QListWidget, QFrame, QLayout)
 from PyQt5.QtCore import Qt, pyqtSlot, QMetaObject, QSize
 
@@ -10,9 +10,10 @@ from matplotlib.figure import Figure
 import nibabel as nib
 import sys
 import os
-from threading import Lock
+import csv
 
 VOX_MAX_VAL = 2500
+
 
 class Controller:
 
@@ -57,13 +58,14 @@ class Controller:
         if folder:
             self.niiPaths = self.getNiiFilePaths(folder)
             if len(self.niiPaths) == 0:
-                QMessageBox.about(self, "Error", "No Nii Files Found")
-                print("No Nii Files Found")
+                w = QWidget()
+                QMessageBox.warning(w, "Error", "No Nii Files Found")
+                w.show()
+                # print("No Nii Files Found")
                 exit(0)
             self.fileSelected = self.niiPaths[0]
             nii = nib.load(self.fileSelected)
             self.data = nii.get_fdata()
-            self.labelData.setFilePath(self.fileSelected)
         else:
             exit(0)
 
@@ -100,18 +102,35 @@ class Controller:
 
     def changeFile(self, file):
         """Gets called by the FileListView when a file selection is changed"""
+
+        if self.labelData.changed is False:  # no need to save label changes to file
+            self.loadNewFile(file)
+
+        else:   # save labels to csv file before switching file
+            saveSuccess = self.labelData.saveToFile()
+            if saveSuccess is False:  # Unsuccesful writing label data to file
+                w = QWidget()
+                QMessageBox.warning(w, 'Warning', 'Error encountered while saving labels related to ' +
+                f'file {self.fileSelected}. Please make sure you have write permission to the directory.')
+                w.show()
+            else:  # Succesfully wrote label data to file, load next file
+                self.loadNewFile(file)
+
+    def loadNewFile(self, file):
+        """Loads a new file into view"""
         self.clearPlots()
         self.fileSelected = file
         nii = nib.load(self.fileSelected)
         self.data = nii.get_fdata()
         self.volumeSelectView.fileLabel.setText(file)
         self.volumeSelectView.setMaxSlider(self.data.shape[3] - 1)
-
-        self.labelData.saveToFile()     # save labelData to csv, and reset labelData
-        self.labelData.setFilePath(self.fileSelected) # set labelData to read new file
-
+        self.labelData.setFilePath(self.fileSelected)  # set labelData to read new file
         self.checkSelectionRanges()
         self.updateViews()
+
+    def writeLabelsToFile(self):
+        """Writes label data to csv file, returns True if write is successful"""
+        return self.labelData.saveToFile()
 
     def changeVolume(self, value):
         """Gets called by the VolumeSelectView when volume slider is moved"""
@@ -120,9 +139,10 @@ class Controller:
         self.updateViews()
 
     def changeLabel(self, sliceType, label, value):
-        """Gets called by the """
+        """Gets called by the LabelView"""
         sliceNum = self.getSliceNum(sliceType)
         self.labelData.setLabel(self.volumeNum, sliceType, sliceNum, label, value)
+        # print(f'DEBUG: label {label} changed to {value}.')
 
     def getLabelsForSlice(self, sliceType):
         """Returns a dictionary of Labels and their values"""
@@ -222,7 +242,7 @@ class LabelTypes:
     def __init__(self):
         self.labelData = dict()
         # Key: label category, Value: list of labels the category
-        self.labelData = {'Labels': ['Blur', 'Gap/Line', 'Dimmed', 'Tunneling']}
+        self.labelData = {'Labels': ['Blur', 'Gap', 'Dim', 'Tunneling']}
 
     def getLabelKeys(self):
         """Return list of keys"""
@@ -261,29 +281,145 @@ class LabelData:
     """Keeps the current instance's label data for the .nii file that is open.
     This object is shared across all volumes for a given .nii file so that we don't save/read from disk each time
     the volume slider is moved, and allowing smooth scrubbing of the volume slider"""
+
     def __init__(self):
         self.filePath = None
-        self.labelData = dict()   # Key: (volume, sliceType, sliceNum), Value: a dictionary containing label and values
+        self.changed = False
+        self.labelData = dict()     # Key: (volume, sliceType, sliceNum), Value: a dictionary containing:
+                                    # Labels as keys and values for the corresponding label
 
     def setFilePath(self, file):
         self.filePath = file
+        self.clear()
+        self.changed = False
+        self.readFromFile()
+
+    def printLabelData(self):
+        """Print content to console for debug"""
+        print('Printing label data content for current file:')
+        for key, val in self.labelData.items():
+            print(f'=> {key}')
+            for label, labelVal in self.labelData[key].items():
+                print(f'===========> {label}:{labelVal}')
+
+    def readFromFile(self):
+        try:
+            labelFile = os.path.splitext(self.filePath)[0] + '_labels.csv'
+            rowCount = 0
+            print(f'DEBUG: Reading from filename {labelFile}')
+            with open(labelFile) as file:
+                reader = csv.reader(file, delimiter=',')
+                for row in reader:
+                    if rowCount > 0 and len(row) > 5:  # skips the header row 0
+                        self.populateData(row)
+                    rowCount += 1
+        except:
+            pass
+        # self.printLabelData()
+
+    def populateData(self, row):
+        """Gets a row from the csv file (label data for one slice), parse the content and add to the self.labelData"""
+        sagittal = row[0]
+        coronal = row[1]
+        axial = row[2]
+        volume = row[3]
+        labelString = row[4]
+        comment = row[5]
+        sliceType = None
+        sliceNum = None
+        vol = None
+
+        if volume != '':
+            vol = int(volume)
+
+        if sagittal != '':
+            sliceType = 'Sagittal'
+            sliceNum = int(sagittal)
+        elif coronal != '':
+            sliceType = 'Coronal'
+            sliceNum = int(coronal)
+        elif axial != '':
+            sliceType = 'Axial'
+            sliceNum = int(axial)
+
+        if labelString != '':
+            labels = labelString.split('/')
+            labelsDict = dict()
+            for label in labels:
+                if label != '':
+                    labelsDict[label] = True
+            self.labelData[(vol, sliceType, sliceNum)] = labelsDict
+
+        self.changed = False  # self.setLabel automatically switch self.changed to True, we overwrite it here to False
 
     def saveToFile(self):
-        pass ##TODO: save data to csv
-        self.clear()
+        """Writes content of self.labelData to csv file in the same directory as the .nii image
+        Returns True if write is succesful, otherwise False"""
+        try:
+            labelFile = os.path.splitext(self.filePath)[0] + '_labels.csv'
+            print(f'DEBUG: Writting to filename {labelFile}')
+            with open(labelFile, mode='w') as file:
+                writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+                writer.writerow(['slice_sagittal', 'slice_coronal', 'slice_axial', 'volume', 'labels', 'comment'])
+
+                for (volume, sliceType, sliceNum) in self.labelData.keys():
+                    output = self.formatForCSV(volume, sliceType, sliceNum)
+                    if output is not None:
+                        writer.writerow(output)
+
+            self.clear()
+            print(f'DEBUG: Finished writting csv to file')
+            return True
+        except:
+            print(f'DEBUG: Error writting csv to file')
+            return False
+
+    def formatForCSV(self, volume, sliceType, sliceNum):
+        """Create a list to be written to CSV as a row.
+        This row format in csv is: slice_sagittal,slice_coronal,slice_axial,volume,labels,comment.
+        The labels are separated by /"""
+        output = list()
+        labelsDict = self.labelData[(volume, sliceType, sliceNum)]
+        labelString = ''
+        comment = ''
+
+        if 'comment' in labelsDict.keys():
+            comment = labelsDict['comment']
+
+        # create label string which has all positive labels separated by /
+        for label in labelsDict.keys():
+            if label != 'comment' and labelsDict[label] is True:
+                labelString = labelString + label + '/'
+
+        if sliceType == 'Axial':
+            output = ['', '', sliceNum, volume, labelString, comment]
+        elif sliceType == 'Sagittal':
+            output = [sliceNum, '', '', volume, labelString, comment]
+        elif sliceType == 'Coronal':
+            output = ['', sliceNum, '', volume, labelString, comment]
+
+        if labelString == '' and comment == '':
+            return None
+        else:
+            return output
 
     def clear(self):
         self.labelData.clear()
 
     def setLabel(self, volume, sliceType, sliceNum, label, value):
-        """Set a single label value for a slice"""
+        """Set a single label value for a slice, add/modify in data dictionary"""
+        print(f'DEBUG: Adding label {label}:{value} for vol {volume}, slice {sliceType} #{sliceNum}')
+        self.changed = True
 
         sliceLabels = dict()
+
         if (volume, sliceType, sliceNum) in self.labelData.keys():
             sliceLabels = self.labelData[(volume, sliceType, sliceNum)]
         else:
             sliceLabels[label] = value
+
         self.labelData[(volume, sliceType, sliceNum)] = sliceLabels
+        # self.printLabelData()
 
     def getLabels(self, volume, sliceType, sliceNum):
         """Get values of all labels for a slice, returns a dictionary
@@ -291,7 +427,7 @@ class LabelData:
         sliceLabels = dict()
 
         if (volume, sliceType, sliceNum) in self.labelData.keys():
-            sliceLabels= self.labelData[(volume, sliceType, sliceNum)]
+            sliceLabels = self.labelData[(volume, sliceType, sliceNum)]
 
         return sliceLabels
 
@@ -340,7 +476,6 @@ class LabelView(QWidget):
             else:
                 button.setChecked(False)
 
-
     @pyqtSlot()
     def button_clicked(self):
         source = self.sender()
@@ -355,7 +490,7 @@ class LabelView(QWidget):
                     if labelType in buttonStates.keys():
                         buttonStates[buttonText] = not (buttonStates[buttonText])  # flip the boolean
                     else:
-                        buttonStates[buttonText] = True    # add label
+                        buttonStates[buttonText] = True  # add label
 
                     self.controller.changeLabel(self.sliceType, buttonText, buttonStates[buttonText])
                     break
@@ -379,6 +514,13 @@ class FileListView(QListWidget):
     def selectedFileChanged(self):
         file = self.currentItem().text()
         self.controller.changeFile(file)
+
+    def selectItem(self, text):
+        """Selects an item from the file list by providing a text string that matches the list item"""
+        items = self.findItems(text, Qt.MatchExactly)
+        if len(items) > 0:
+            self.setCurrentRow(self.row(items[0]))
+
 
 
 class VolumeSelectView(QWidget):
