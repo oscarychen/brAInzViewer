@@ -104,6 +104,7 @@ class Controller:
 
     def changeFile(self, file):
         """Gets called by the FileListView when a file selection is changed"""
+        self.clearPlots()
         self.fileSelected = file
         nii = nib.load(self.fileSelected)
         self.data = nii.get_fdata()
@@ -145,6 +146,12 @@ class Controller:
         elif name == 'Coronal':
             self.coronalSliceNum = sliceNum
             self.updateCoronalView()
+
+    def clearPlots(self):
+        self.axialView.canvas.clearPlot()
+        self.sagittalView.canvas.clearPlot()
+        self.coronalView.canvas.clearPlot()
+        self.triPlaneView.repaint()
 
     def updateViews(self):
         """Updates View classes"""
@@ -630,6 +637,11 @@ class PlotCanvas(FigureCanvas):
         self.ax.imshow(plotData.T, cmap='gray', origin='lower', aspect=self.controller.getAspectRatio(self.sliceType),
                        vmin=self.minVoxVal, vmax=self.maxVoxVal)
 
+        self.draw()
+
+    def clearPlot(self):
+        self.ax.cla()
+        self.ax.set_axis_off()
         self.draw()
 
 
