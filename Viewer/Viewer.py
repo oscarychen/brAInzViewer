@@ -165,7 +165,7 @@ class Controller:
         self.updateAxialView()
         self.updateSagittalView()
         self.updateCoronalView()
-        self.triPlaneView.repaint()
+        # self.triPlaneView.repaint()
         viewUpdateLock.release()
 
     def updateAxialView(self):
@@ -174,6 +174,7 @@ class Controller:
         self.axialView.setSlider(self.axialSliceNum)
         self.axialLabelView.updateButtons(self.getLabelsForSlice('Axial'))
         self.axialView.canvas.plot(self.getPlotData('Axial'))
+        self.axialLabelView.repaint()
 
     def updateSagittalView(self):
         self.sagittalView.canvas.setSliceIndex(self.sagittalSliceNum)
@@ -181,6 +182,7 @@ class Controller:
         self.sagittalView.setSlider(self.sagittalSliceNum)
         self.sagittalLabelView.updateButtons(self.getLabelsForSlice('Sagittal'))
         self.sagittalView.canvas.plot(self.getPlotData('Sagittal'))
+        self.sagittalView.repaint()
 
     def updateCoronalView(self):
         self.coronalView.canvas.setSliceIndex(self.coronalSliceNum)
@@ -188,6 +190,7 @@ class Controller:
         self.coronalView.setSlider(self.coronalSliceNum)
         self.coronalLabelView.updateButtons(self.getLabelsForSlice('Coronal'))
         self.coronalView.canvas.plot(self.getPlotData('Coronal'))
+        self.coronalView.repaint()
 
     def getSliceNum(self, sliceType):
         """Returns the current slice number given slice type"""
