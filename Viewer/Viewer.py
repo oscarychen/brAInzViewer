@@ -10,6 +10,7 @@ from matplotlib.figure import Figure
 import nibabel as nib
 import sys
 import os
+import numpy as np
 import csv
 
 VOX_MAX_VAL = 2500
@@ -26,6 +27,7 @@ class Controller:
         self.openFolder()
         self.fileSelected = None
 
+        self.showSlicing = True
         self.axialSliceNum = 0
         self.sagittalSliceNum = 0
         self.coronalSliceNum = 0
@@ -154,13 +156,14 @@ class Controller:
 
         if name == 'Axial':
             self.axialSliceNum = sliceNum
-            self.updateAxialView()
+            # self.updateAxialView()
         elif name == 'Sagittal':
             self.sagittalSliceNum = sliceNum
-            self.updateSagittalView()
+            # self.updateSagittalView()
         elif name == 'Coronal':
             self.coronalSliceNum = sliceNum
-            self.updateCoronalView()
+            # self.updateCoronalView()
+        self.updateViews()
 
     def clearPlots(self):
         self.axialView.canvas.clearPlot()
@@ -186,6 +189,10 @@ class Controller:
         self.axialView.setSlider(self.axialSliceNum)
         self.axialLabelView.updateButtons(self.getLabelsForSlice('Axial'))
         self.axialView.canvas.plot(self.getPlotData('Axial'))
+
+        if self.showSlicing:
+            self.axialView.canvas.plotLines(sagittal_v=self.sagittalSliceNum, coronal_h=self.coronalSliceNum)
+
         self.axialLabelView.repaint()
 
     def updateSagittalView(self):
@@ -194,6 +201,10 @@ class Controller:
         self.sagittalView.setSlider(self.sagittalSliceNum)
         self.sagittalLabelView.updateButtons(self.getLabelsForSlice('Sagittal'))
         self.sagittalView.canvas.plot(self.getPlotData('Sagittal'))
+
+        if self.showSlicing:
+            self.sagittalView.canvas.plotLines(axial_h=self.axialSliceNum, coronal_v=self.coronalSliceNum)
+
         self.sagittalView.repaint()
 
     def updateCoronalView(self):
@@ -202,6 +213,10 @@ class Controller:
         self.coronalView.setSlider(self.coronalSliceNum)
         self.coronalLabelView.updateButtons(self.getLabelsForSlice('Coronal'))
         self.coronalView.canvas.plot(self.getPlotData('Coronal'))
+
+        if self.showSlicing:
+            self.coronalView.canvas.plotLines(axial_h=self.axialSliceNum, sagittal_v=self.sagittalSliceNum)
+
         self.coronalView.repaint()
 
     def getSliceNum(self, sliceType):
@@ -768,15 +783,33 @@ class PlotCanvas(FigureCanvas):
         self.ax.cla()
         self.ax.set_axis_off()
 
-        # plotData = self.controller.getPlotData(self.sliceType, self.currentSliceNum, self.volume)
         self.ax.imshow(plotData.T, cmap='gray', origin='lower', aspect=self.controller.getAspectRatio(self.sliceType),
                        vmin=self.minVoxVal, vmax=self.maxVoxVal)
-
         self.draw()
 
     def clearPlot(self):
         self.ax.cla()
         self.ax.set_axis_off()
+        self.draw()
+
+    def plotLines(self, **lines):
+        """Plots slice indicator lines"""
+
+        linewidth = 1
+        linestyle = '-'
+
+        if 'sagittal_v' in lines.keys():
+            self.ax.axvline(x=lines['sagittal_v'], color='blue', linewidth=linewidth, linestyle=linestyle)
+
+        if 'coronal_h' in lines.keys():
+            self.ax.axhline(y=lines['coronal_h'], color='green', linewidth=linewidth, linestyle=linestyle)
+
+        if 'axial_h' in lines.keys():
+            self.ax.axhline(y=lines['axial_h'], color='red', linewidth=linewidth, linestyle=linestyle)
+
+        if 'coronal_v' in lines.keys():
+            self.ax.axvline(x=lines['coronal_v'], color='green', linewidth=linewidth, linestyle=linestyle)
+
         self.draw()
 
 
