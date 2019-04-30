@@ -16,6 +16,8 @@ VOX_MAX_VAL = 2500
 viewUpdateLock = Lock()
 labelWriteLock = Lock()
 sliderLock = Lock()
+sliceLabelLock = Lock()
+buttonLock = Lock()
 
 class Controller:
 
@@ -333,14 +335,18 @@ class LabelView(QWidget):
     def updateButtons(self, labels):
         """Called by Controller to update button state from labels
         (of type dictionary, key: label, value: label value)"""
+        buttonLock.acquire()
         for button in self.buttons:
-            button.setChecked(False)
             if button.text() in labels.keys() and labels[button.text()] is True:
                 button.setChecked(True)
+            else:
+                button.setChecked(False)
+        buttonLock.release()
 
 
     @pyqtSlot()
     def button_clicked(self):
+        buttonLock.acquire()
         source = self.sender()
         buttonText = source.text()
         buttonStates = self.controller.getLabelsForSlice(self.sliceType)
@@ -357,6 +363,8 @@ class LabelView(QWidget):
 
                     self.controller.changeLabel(self.sliceType, buttonText, buttonStates[buttonText])
                     break
+
+        buttonLock.release()
 
         # print(f'Button {buttonText} set to {self.buttonStates[buttonText]}')
 
@@ -418,8 +426,10 @@ class VolumeSelectView(QWidget):
         self.setLayout(hbox)
 
     def volumeChanged(self, value):
+        sliderLock.acquire()
         self.volumeLabel.setText(str(value))
         self.controller.changeVolume(value)
+        sliderLock.release()
 
     def setMaxSlider(self, value):
         self.slider.setMaximum(value)
@@ -595,7 +605,9 @@ class SliceView(QWidget):
         self.slider.setMaximum(value)
 
     def setSliceLabel(self, sliceNumber):
+        sliceLabelLock.acquire()
         self.sliceNumberLabel.setText(f'Slice: {sliceNumber + 1}')
+        sliceLabelLock.release()
 
 
 class PlotCanvas(FigureCanvas):
