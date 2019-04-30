@@ -13,11 +13,6 @@ import os
 from threading import Lock
 
 VOX_MAX_VAL = 2500
-viewUpdateLock = Lock()
-labelWriteLock = Lock()
-sliderLock = Lock()
-sliceLabelLock = Lock()
-buttonLock = Lock()
 
 class Controller:
 
@@ -155,7 +150,6 @@ class Controller:
 
     def updateViews(self):
         """Updates View classes"""
-        viewUpdateLock.acquire()
         self.volumeSelectView.updateView(self.volumeNum, self.fileSelected)
 
         self.axialView.setMaxSlider(self.data.shape[2] - 1)
@@ -165,8 +159,6 @@ class Controller:
         self.updateAxialView()
         self.updateSagittalView()
         self.updateCoronalView()
-        # self.triPlaneView.repaint()
-        viewUpdateLock.release()
 
     def updateAxialView(self):
         self.axialView.canvas.setSliceIndex(self.axialSliceNum)
@@ -286,14 +278,12 @@ class LabelData:
     def setLabel(self, volume, sliceType, sliceNum, label, value):
         """Set a single label value for a slice"""
 
-        labelWriteLock.acquire()
         sliceLabels = dict()
         if (volume, sliceType, sliceNum) in self.labelData.keys():
             sliceLabels = self.labelData[(volume, sliceType, sliceNum)]
         else:
             sliceLabels[label] = value
         self.labelData[(volume, sliceType, sliceNum)] = sliceLabels
-        labelWriteLock.release()
 
     def getLabels(self, volume, sliceType, sliceNum):
         """Get values of all labels for a slice, returns a dictionary
@@ -344,18 +334,15 @@ class LabelView(QWidget):
     def updateButtons(self, labels):
         """Called by Controller to update button state from labels
         (of type dictionary, key: label, value: label value)"""
-        buttonLock.acquire()
         for button in self.buttons:
             if button.text() in labels.keys() and labels[button.text()] is True:
                 button.setChecked(True)
             else:
                 button.setChecked(False)
-        buttonLock.release()
 
 
     @pyqtSlot()
     def button_clicked(self):
-        buttonLock.acquire()
         source = self.sender()
         buttonText = source.text()
         buttonStates = self.controller.getLabelsForSlice(self.sliceType)
@@ -373,7 +360,6 @@ class LabelView(QWidget):
                     self.controller.changeLabel(self.sliceType, buttonText, buttonStates[buttonText])
                     break
 
-        buttonLock.release()
         # print(f'Button {buttonText} set to {self.buttonStates[buttonText]}')
 
 
@@ -434,10 +420,8 @@ class VolumeSelectView(QWidget):
         self.setLayout(hbox)
 
     def volumeChanged(self, value):
-        sliderLock.acquire()
         self.volumeLabel.setText(str(value))
         self.controller.changeVolume(value)
-        sliderLock.release()
 
     def setMaxSlider(self, value):
         self.slider.setMaximum(value)
@@ -604,18 +588,14 @@ class SliceView(QWidget):
         self.slider.setValue(value)
 
     def sliceChanged(self, value):
-        sliderLock.acquire()
         self.controller.changeSliceNum(self.sliceType, value)
-        sliderLock.release()
 
     def setMaxSlider(self, value):
         self.setSlider(self.controller.getSliceNum(self.sliceType))
         self.slider.setMaximum(value)
 
     def setSliceLabel(self, sliceNumber):
-        sliceLabelLock.acquire()
         self.sliceNumberLabel.setText(f'Slice: {sliceNumber + 1}')
-        sliceLabelLock.release()
 
 
 class PlotCanvas(FigureCanvas):
