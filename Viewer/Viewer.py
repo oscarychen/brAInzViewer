@@ -15,6 +15,7 @@ from threading import Lock
 VOX_MAX_VAL = 2500
 viewUpdateLock = Lock()
 labelWriteLock = Lock()
+sliderLock = Lock()
 
 class Controller:
 
@@ -123,6 +124,7 @@ class Controller:
         self.updateViews()
 
     def changeLabel(self, sliceType, label, value):
+        """Gets called by the """
         sliceNum = self.getSliceNum(sliceType)
         self.labelData.setLabel(self.volumeNum, sliceType, sliceNum, label, value)
 
@@ -180,6 +182,7 @@ class Controller:
         self.coronalView.canvas.plot(self.getPlotData('Coronal'))
 
     def getSliceNum(self, sliceType):
+        """Returns the current slice number given slice type"""
         if sliceType == 'Axial':
             return self.axialSliceNum
         elif sliceType == 'Sagittal':
@@ -259,9 +262,6 @@ class LabelData:
         self.filePath = None
         self.labelData = dict()   # Key: (volume, sliceType, sliceNum), Value: a dictionary containing label and values
 
-    def getLabelByVolumeNumber(self, volumeNum):
-        return self.labelData[volumeNum]
-
     def setFilePath(self, file):
         self.filePath = file
 
@@ -273,7 +273,7 @@ class LabelData:
         self.labelData.clear()
 
     def setLabel(self, volume, sliceType, sliceNum, label, value):
-        """Set a single label for a slice"""
+        """Set a single label value for a slice"""
 
         labelWriteLock.acquire()
         sliceLabels = dict()
@@ -285,7 +285,8 @@ class LabelData:
         labelWriteLock.release()
 
     def getLabels(self, volume, sliceType, sliceNum):
-        """Get values of all labels for a slice"""
+        """Get values of all labels for a slice, returns a dictionary
+            where the key contains label, value contains label value"""
         sliceLabels = dict()
 
         if (volume, sliceType, sliceNum) in self.labelData.keys():
@@ -585,7 +586,9 @@ class SliceView(QWidget):
         self.slider.setValue(value)
 
     def sliceChanged(self, value):
+        sliderLock.acquire()
         self.controller.changeSliceNum(self.sliceType, value)
+        sliderLock.release()
 
     def setMaxSlider(self, value):
         self.setSlider(self.controller.getSliceNum(self.sliceType))
