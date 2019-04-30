@@ -49,7 +49,6 @@ class Controller:
         self.volumeSelectView = VolumeSelectView(self, self.triPlaneView, self.fileListView, self.brightnessSelector)
         self.fileListView.setCurrentRow(0)
 
-
         self.showView()
 
     def showView(self):
@@ -122,7 +121,6 @@ class Controller:
     def changeVolume(self, value):
         """Gets called by the VolumeSelectView when volume slider is moved"""
         self.volumeNum = value
-
         self.checkSelectionRanges()
         self.updateViews()
 
@@ -167,6 +165,7 @@ class Controller:
         self.updateAxialView()
         self.updateSagittalView()
         self.updateCoronalView()
+        self.triPlaneView.repaint()
         viewUpdateLock.release()
 
     def updateAxialView(self):
@@ -223,7 +222,7 @@ class Controller:
 
 
 class LabelTypes:
-    """A class that holds label typing data"""
+    """A class that holds label typing"""
 
     def __init__(self):
         self.labelData = dict()
@@ -372,7 +371,6 @@ class LabelView(QWidget):
                     break
 
         buttonLock.release()
-
         # print(f'Button {buttonText} set to {self.buttonStates[buttonText]}')
 
 
