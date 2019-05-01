@@ -1,6 +1,6 @@
-from PyQt5.QtWidgets import (QApplication, QMainWindow, QMenu, QVBoxLayout, QSizePolicy, QMessageBox,
+from PyQt5.QtWidgets import (QApplication, QMainWindow, QMenuBar, QVBoxLayout, QSizePolicy, QMessageBox,
                              QWidget, QPushButton, QSlider, QHBoxLayout,
-                             QGridLayout, QLabel, QFileDialog, QListWidget, QFrame, QLayout)
+                             QGridLayout, QLabel, QFileDialog, QListWidget, QFrame, QLayout, QAction)
 from PyQt5.QtCore import Qt, pyqtSlot, QMetaObject, QSize
 
 from PyQt5 import QtGui
@@ -46,11 +46,8 @@ class Controller(QMainWindow):
         self.fileListView = FileListView(self, self.niiPaths)
         self.volumeSelectView = VolumeSelectView(self, self.triPlaneView, self.fileListView, self.brightnessSelector)
         self.fileListView.setCurrentRow(0)
-
-        self.mainWindow = View(self, self.volumeSelectView)
-
         self.updateViews()
-        self.mainWindow.show()
+        self.mainWindow = View(self, self.volumeSelectView)
 
     def openFolder(self):
         """Gets called upon Controller initialization to prompt for directory"""
@@ -251,6 +248,9 @@ class Controller(QMainWindow):
     def exitProgram(self):
         """Gets called by view when views are closed"""
         self.labelData.saveToFile()
+
+    def exportLabelData(self):
+        print('Export label data')
 
 
 class LabelTypes:
@@ -539,6 +539,7 @@ class FileListView(QListWidget):
             self.setCurrentRow(self.row(items[0]))
 
 class View(QMainWindow):
+    """Main view window wrapper class"""
 
     def __init__(self, controller, volumeSelectView):
         super().__init__()
@@ -546,13 +547,26 @@ class View(QMainWindow):
         self.volumeSelectView = volumeSelectView
         self.setCentralWidget(self.volumeSelectView)
 
+        mainMenu = self.menuBar()
+        mainMenu.setNativeMenuBar(False)    # Needed for Mac OS
+        fileMenu = mainMenu.addMenu('Options')
+
+        exportLabelsButton = QAction('Export Labels', self)
+        exportLabelsButton.triggered.connect(self.exportLabelsButtonPressed)
+        fileMenu.addAction(exportLabelsButton)
+
+        self.show()
+
+    def exportLabelsButtonPressed(self):
+        self.controller.exportLabelData()
+
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
         """Triggered when the window is being closed"""
         self.controller.exitProgram()
 
 
 class VolumeSelectView(QWidget):
-    """Main window, contains other view classes, contains slider for Volume selection"""
+    """Top QWidget class, contains other view classes, contains slider for Volume selection"""
 
     def __init__(self, controller, triPlaneView, fileListView, brightnessSelector, parent=Controller):
         super(VolumeSelectView, self).__init__()
