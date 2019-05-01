@@ -10,7 +10,6 @@ from matplotlib.figure import Figure
 import nibabel as nib
 import sys
 import os
-import numpy as np
 import csv
 
 VOX_MAX_VAL = 2500
@@ -250,6 +249,10 @@ class Controller:
         elif sliceType == 'Coronal':
             return self.data[:, self.coronalSliceNum, :, self.volumeNum]
 
+    def exitProgram(self):
+        """Gets called by view when views are closed"""
+        self.labelData.saveToFile()
+
 
 class LabelTypes:
     """A class that holds label typing"""
@@ -401,7 +404,7 @@ class LabelData:
         if 'comment' in labelsDict.keys():
             comment = labelsDict['comment']
 
-        # create label string which has all positive labels separated by /
+        # create label string which has all positive labels separated by '/'
         for label in labelsDict.keys():
             if label != 'comment' and labelsDict[label] is True:
                 labelString = labelString + label + '/'
@@ -587,6 +590,9 @@ class VolumeSelectView(QWidget):
         self.fileLabel.setText(fileLabel)
         self.volumeLabel.setText(f'Volume: {sliderValue + 1}')
         self.slider.setValue(sliderValue)
+
+    def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
+        self.controller.exitProgram()
 
 
 class DisplayBrightnessSelectorView(QWidget):
