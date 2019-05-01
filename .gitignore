@@ -1,5 +1,12 @@
+
+# Ignore MRI scan files
+*.nii
+*.bvec
+*.bval
+*.txt
+
 # Pycharm project configuration
-.idea/
+*.idea/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
