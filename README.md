@@ -2,10 +2,10 @@
 
 Developers, after cloning this repo, copy the 'Calgary_PS_DTI_Dataset' folder from the hard drive you were given, and place it in the root directory of the repo, as such:
 
-- BrainScanMotionDetection
---- Calgary_PS_DTI_Dataset
---- Viewer
---- playground
+|| - BrainScanMotionDetection
+|| --- Calgary_PS_DTI_Dataset
+|| --- Viewer
+|| --- playground
 
 This repo ignores the image and meta data files that came with the images, and only will included any additional files you have added that have different extensions (Details in .gitignore).
 
