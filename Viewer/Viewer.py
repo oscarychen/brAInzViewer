@@ -259,7 +259,7 @@ class LabelTypes:
     def __init__(self):
         self.labelData = dict()
         # Key: label category, Value: list of labels the category
-        self.labelData = {'Labels': ['Blur', 'Gap', 'Dim', 'Tunneling']}
+        self.labelData = {'Labels': ['Blur', 'Dimming']}
 
     def getLabelKeys(self):
         """Return list of keys"""
