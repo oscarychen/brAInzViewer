@@ -321,7 +321,7 @@ class LabelData:
         try:
             labelFile = os.path.splitext(self.filePath)[0] + '_labels.csv'
             rowCount = 0
-            print(f'DEBUG: Reading from filename {labelFile}')
+            # print(f'DEBUG: Reading from filename {labelFile}')
             with open(labelFile) as file:
                 reader = csv.reader(file, delimiter=',')
                 for row in reader:
@@ -383,10 +383,10 @@ class LabelData:
                         writer.writerow(output)
 
             self.clear()
-            print(f'DEBUG: Finished writting csv to file')
+            # print(f'DEBUG: Finished writting csv to file')
             return True
         except:
-            print(f'DEBUG: Error writting csv to file')
+            # print(f'DEBUG: Error writting csv to file')
             return False
 
     def formatForCSV(self, volume, sliceType, sliceNum):
@@ -423,7 +423,7 @@ class LabelData:
 
     def setLabel(self, volume, sliceType, sliceNum, label, value):
         """Set a single label value for a slice, add/modify in data dictionary"""
-        print(f'DEBUG: Adding label {label}:{value} for vol {volume}, slice {sliceType} #{sliceNum}')
+        # print(f'DEBUG: Adding label {label}:{value} for vol {volume}, slice {sliceType} #{sliceNum}')
         self.changed = True
 
         sliceLabels = dict()
@@ -722,6 +722,7 @@ class SliceView(QWidget):
         label.setText(sliceType)
         self.sliceNumberLabel = QLabel()
         self.slider = QSlider(Qt.Horizontal)
+        self.setSliderStyle()
         self.slider.setFocusPolicy(Qt.StrongFocus)
         self.slider.setTickPosition(QSlider.TicksBothSides)
         self.slider.setTickInterval(10)
@@ -730,6 +731,7 @@ class SliceView(QWidget):
         self.slider.setMaximum(numSlices)
         self.slider.setValue(0)
         self.slider.valueChanged.connect(self.sliceChanged)
+
 
         self.canvas = PlotCanvas(self.controller, sliceType)
         vbox = QVBoxLayout()
@@ -753,6 +755,68 @@ class SliceView(QWidget):
 
     def setSliceLabel(self, sliceNumber):
         self.sliceNumberLabel.setText(f'Slice: {sliceNumber + 1}')
+
+    def setSliderStyle(self):
+
+        sliderHandleColor = None
+
+        if self.sliceType == 'Axial':
+
+            self.slider.setStyleSheet("""
+                                QSlider::groove:horizontal {
+                                border: 1px solid #999999;
+                                height: 1px; /* the groove expands to the size of the slider by default. by giving it a height, it has a fixed size */
+                                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #B1B1B1, stop:1 #c4c4c4);
+                                margin: 2px 0;
+                                }
+                                
+                                QSlider::handle:horizontal {
+                                background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #ffffff, stop:1 #ed2a2a);
+                                border: 1px solid #999999;
+                                width: 15px;
+                                margin: -8px 0; /* handle is placed by default on the contents rect of the groove. Expand outside the groove */
+                                border-radius: 8px;
+                                }
+                                """)
+
+        elif self.sliceType == 'Sagittal':
+
+            self.slider.setStyleSheet("""
+                                QSlider::groove:horizontal {
+                                border: 1px solid #999999;
+                                height: 1px;
+                                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #B1B1B1, stop:1 #c4c4c4);
+                                margin: 2px 0;
+                                }
+
+                                QSlider::handle:horizontal {
+                                background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #ffffff, stop:1 #005dff);
+                                border: 1px solid #999999;
+                                width: 15px;
+                                margin: -8px 0;
+                                border-radius: 8px;
+                                }
+                                """)
+
+        elif self.sliceType == 'Coronal':
+
+            self.slider.setStyleSheet("""
+                               QSlider::groove:horizontal {
+                               border: 1px solid #999999;
+                               height: 1px;
+                               background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #B1B1B1, stop:1 #c4c4c4);
+                               margin: 2px 0;
+                               }
+
+                               QSlider::handle:horizontal {
+                               background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #ffffff, stop:1 #12e82b);
+                               border: 1px solid #999999;
+                               width: 15px;
+                               margin: -8px 0;
+                               border-radius: 8px;
+                               }
+                               """)
+
 
 
 class PlotCanvas(FigureCanvas):
