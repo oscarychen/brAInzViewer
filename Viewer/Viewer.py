@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QMenu, QVBoxLayout, QSizePolicy, QMessageBox,
-                             QWidget, QPushButton, QSlider, QHBoxLayout, QGroupBox, QRadioButton, QErrorMessage,
-                             QGridLayout, QLabel, QInputDialog, QFileDialog, QListWidget, QFrame, QLayout)
+                             QWidget, QPushButton, QSlider, QHBoxLayout,
+                             QGridLayout, QLabel, QFileDialog, QListWidget, QFrame, QLayout)
 from PyQt5.QtCore import Qt, pyqtSlot, QMetaObject, QSize
 
 from PyQt5 import QtGui
@@ -15,9 +15,10 @@ import csv
 VOX_MAX_VAL = 2500
 
 
-class Controller:
+class Controller(QMainWindow):
 
     def __init__(self):
+        super().__init__()
         self.data = None
         self.labelTypes = LabelTypes()
         self.labelData = LabelData()
@@ -46,12 +47,10 @@ class Controller:
         self.volumeSelectView = VolumeSelectView(self, self.triPlaneView, self.fileListView, self.brightnessSelector)
         self.fileListView.setCurrentRow(0)
 
-        self.showView()
+        self.mainWindow = View(self, self.volumeSelectView)
 
-    def showView(self):
-        """Called to show views after initialization"""
-        self.volumeSelectView.show()
         self.updateViews()
+        self.mainWindow.show()
 
     def openFolder(self):
         """Gets called upon Controller initialization to prompt for directory"""
@@ -539,6 +538,17 @@ class FileListView(QListWidget):
         if len(items) > 0:
             self.setCurrentRow(self.row(items[0]))
 
+class View(QMainWindow):
+
+    def __init__(self, controller, volumeSelectView):
+        super().__init__()
+        self.controller = controller
+        self.volumeSelectView = volumeSelectView
+        self.setCentralWidget(self.volumeSelectView)
+
+    def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
+        """Triggered when the window is being closed"""
+        self.controller.exitProgram()
 
 
 class VolumeSelectView(QWidget):
@@ -558,8 +568,6 @@ class VolumeSelectView(QWidget):
         self.slider.setFocusPolicy(Qt.StrongFocus)
         self.slider.setTickPosition(QSlider.TicksBothSides)
         self.slider.setTickInterval(1)
-        # self.slider.setSingleStep(1)
-        # self.slider.setMaximum(0)
         self.slider.setMinimum(0)
         self.slider.valueChanged.connect(self.volumeChanged)
 
@@ -590,9 +598,6 @@ class VolumeSelectView(QWidget):
         self.fileLabel.setText(fileLabel)
         self.volumeLabel.setText(f'Volume: {sliderValue + 1}')
         self.slider.setValue(sliderValue)
-
-    def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
-        self.controller.exitProgram()
 
 
 class DisplayBrightnessSelectorView(QWidget):
