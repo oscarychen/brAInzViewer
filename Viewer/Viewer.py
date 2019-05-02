@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import (QApplication, QMainWindow, QMenuBar, QVBoxLayout, QSizePolicy, QMessageBox,
+from PyQt5.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QSizePolicy, QMessageBox,
                              QWidget, QPushButton, QSlider, QHBoxLayout,
                              QGridLayout, QLabel, QFileDialog, QListWidget, QFrame, QLayout, QAction)
 from PyQt5.QtCore import Qt, pyqtSlot, QMetaObject, QSize
@@ -564,6 +564,19 @@ class View(QMainWindow):
         """Triggered when the window is being closed"""
         self.controller.exitProgram()
 
+class SliderTicker(QWidget):
+    """A widget that sits over/under sliders to add indicator to slider items, such as label existence"""
+    def __init__(self):
+        super(QWidget, self).__init__()
+        self.setLayout(QHBoxLayout())
+        self.layout().setContentsMargins(0,0,0,0)
+
+    def setTicks(self, list):
+        for item in list:
+            label = QLabel(str(item))
+            # label.setContentsMargins(0,0,0,0)
+            self.layout().addWidget(label)
+
 
 class VolumeSelectView(QWidget):
     """Top QWidget class, contains other view classes, contains slider for Volume selection"""
@@ -585,6 +598,9 @@ class VolumeSelectView(QWidget):
         self.slider.setMinimum(0)
         self.slider.valueChanged.connect(self.volumeChanged)
 
+        self.sliderTicker = SliderTicker()
+        self.sliderTicker.setContentsMargins(8,0,0,0)
+
         self.volumeLabel.setText('0')
 
         # Left-half: data display area
@@ -592,6 +608,7 @@ class VolumeSelectView(QWidget):
         vbox.addWidget(self.fileLabel)
         vbox.addWidget(self.volumeLabel)
         vbox.addWidget(self.slider)
+        vbox.addWidget(self.sliderTicker)
         vbox.addWidget(triPlaneView)
         vbox.addWidget(brightnessSelector)
 
@@ -756,7 +773,6 @@ class SliceView(QWidget):
         self.slider.setMaximum(numSlices)
         self.slider.setValue(0)
         self.slider.valueChanged.connect(self.sliceChanged)
-
 
         self.canvas = PlotCanvas(self.controller, sliceType)
         vbox = QVBoxLayout()
