@@ -15,7 +15,6 @@ Our Viewier.py program will create a label.csv file for each .nii image file, so
 Please also send me your git username to be added so you have push permission to this repo. It is recommended that you create your own branch and merge to master branch, instead of pushing directly to the master branch. You may also fork the repo and do pull request to contribute if you prefer.
 
 In the labelling spreadsheet you will find your name attached to one of the .nii files, which are assigned to you to go through and label them.
-the b2000 folder contains images scanned with 2000 diffusion rate and the images are dimmer, where as the images in Calgary_PS_DTI_Dataset are scanned with 800 diffusion rate. We are working with the 800 diffusion scans first, so label those in the Calgary_PS_DTI_Dataset first.
 
 
 Dependencies:
