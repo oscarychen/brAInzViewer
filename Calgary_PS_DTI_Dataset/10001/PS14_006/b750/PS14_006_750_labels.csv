@@ -1,3 +1,5 @@
 slice_sagittal,slice_coronal,slice_axial,volume,labels,comment
 ,,11,29,Blur/,
-,,10,29,Dimming/,
+,,10,29,Dimming/Blur/,
+,,9,29,Blur/,
+,,4,29,Blur/,
