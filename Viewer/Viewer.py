@@ -11,6 +11,7 @@ import nibabel as nib
 import sys
 import os
 import csv
+import numpy as np
 
 VOX_MAX_VAL = 2500
 
@@ -21,7 +22,7 @@ class Controller(QMainWindow):
         super().__init__()
         self.data = None
         self.labelTypes = LabelTypes()
-        self.labelData = LabelData()
+        self.labelData = LabelData(self)
 
         self.niiPaths = list()
         self.openFolder()
@@ -140,24 +141,22 @@ class Controller(QMainWindow):
         sliceNum = self.getSliceNum(sliceType)
         self.labelData.setLabel(self.volumeNum, sliceType, sliceNum, label, value)
         # print(f'DEBUG: label {label} changed to {value}.')
+        self.volumeSelectView.updateSliderTicks()
 
     def getLabelsForSlice(self, sliceType):
         """Returns a dictionary of Labels and their values"""
         sliceNum = self.getSliceNum(sliceType)
-        return self.labelData.getLabels(self.volumeNum, sliceType, sliceNum)
+        return self.labelData.getLabelsForSlice(self.volumeNum, sliceType, sliceNum)
 
     def changeSliceNum(self, name, sliceNum):
         """Gets called by the SliceView when slice slider is moved"""
 
         if name == 'Axial':
             self.axialSliceNum = sliceNum
-            # self.updateAxialView()
         elif name == 'Sagittal':
             self.sagittalSliceNum = sliceNum
-            # self.updateSagittalView()
         elif name == 'Coronal':
             self.coronalSliceNum = sliceNum
-            # self.updateCoronalView()
         self.updateViews()
 
     def clearPlots(self):
@@ -252,6 +251,37 @@ class Controller(QMainWindow):
     def exportLabelData(self):
         print('Export label data')
 
+    def getNumberOfVolumes(self):
+        return self.data.shape[3]
+
+    def getNumberOfAxialSlices(self):
+        return self.data.shape[2]
+
+    def getNumberOfSagittalSlices(self):
+        return self.data.shape[0]
+
+    def getNumberOfCoronalSlices(self):
+        return self.data.shape[1]
+
+    def volumeSliderTicks(self):
+        ticks = list()
+        defaultTick = ' '
+        markerTick = '^'
+
+        for v in range(self.getNumberOfVolumes()):
+            ticks.append(defaultTick)
+
+
+        for key, labels in self.labelData.labelData.items():
+            volume, _, _ = key
+            labelFlag = defaultTick
+            for label, value in labels.items():
+                if value is True:
+                    labelFlag = markerTick
+            ticks[volume] = labelFlag
+        # print(f'ticks {ticks}')
+        return ticks
+
 
 class LabelTypes:
     """A class that holds label typing"""
@@ -299,7 +329,8 @@ class LabelData:
     This object is shared across all volumes for a given .nii file so that we don't save/read from disk each time
     the volume slider is moved, and allowing smooth scrubbing of the volume slider"""
 
-    def __init__(self):
+    def __init__(self, controller):
+        self.controller = controller
         self.filePath = None
         self.changed = False
         self.labelData = dict()     # Key: (volume, sliceType, sliceNum), Value: a dictionary containing:
@@ -438,7 +469,7 @@ class LabelData:
         self.labelData[(volume, sliceType, sliceNum)] = sliceLabels
         # self.printLabelData()
 
-    def getLabels(self, volume, sliceType, sliceNum):
+    def getLabelsForSlice(self, volume, sliceType, sliceNum):
         """Get values of all labels for a slice, returns a dictionary
             where the key contains label, value contains label value"""
         sliceLabels = dict()
@@ -572,10 +603,15 @@ class SliderTicker(QWidget):
         self.layout().setContentsMargins(0,0,0,0)
 
     def setTicks(self, list):
+        self.clearTicks()
         for item in list:
             label = QLabel(str(item))
-            # label.setContentsMargins(0,0,0,0)
             self.layout().addWidget(label)
+
+    def clearTicks(self):
+        for i in reversed(range(self.layout().count())):
+            self.layout().itemAt(i).widget().setParent(None)
+
 
 
 class VolumeSelectView(QWidget):
@@ -629,6 +665,10 @@ class VolumeSelectView(QWidget):
         self.fileLabel.setText(fileLabel)
         self.volumeLabel.setText(f'Volume: {sliderValue + 1}')
         self.slider.setValue(sliderValue)
+        self.updateSliderTicks()
+
+    def updateSliderTicks(self):
+        self.sliderTicker.setTicks(self.controller.volumeSliderTicks())
 
 
 class DisplayBrightnessSelectorView(QWidget):
@@ -857,7 +897,6 @@ class SliceView(QWidget):
                                border-radius: 8px;
                                }
                                """)
-
 
 
 class PlotCanvas(FigureCanvas):
