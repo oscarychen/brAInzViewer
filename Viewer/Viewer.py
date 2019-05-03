@@ -263,14 +263,34 @@ class Controller(QMainWindow):
     def getNumberOfCoronalSlices(self):
         return self.data.shape[1]
 
-    def volumeSliderTicks(self):
+    def getVolumeSliderLowerTicksData(self):
+        """Returns a list of characters to be placed in the view for volume slider lower ticks"""
         ticks = list()
         defaultTick = ' '
-        markerTick = '^'
+        markerTick = '\u25b2'  # triangle pointing up
 
         for v in range(self.getNumberOfVolumes()):
             ticks.append(defaultTick)
 
+
+        for key, labels in self.labelData.labelData.items():
+            volume, _, _ = key
+            labelFlag = defaultTick
+            for label, value in labels.items():
+                if value is True:
+                    labelFlag = markerTick
+            ticks[volume] = labelFlag
+        # print(f'ticks {ticks}')
+        return ticks
+
+    def getVolumeSliderUpperTicksData(self):
+        """Returns a list of characters to be placed in the view for volume slider upper ticks"""
+        ticks = list()
+        defaultTick = ' '
+        markerTick = '\u25bc'  # triangle pointing down
+
+        for v in range(self.getNumberOfVolumes()):
+            ticks.append(defaultTick)
 
         for key, labels in self.labelData.labelData.items():
             volume, _, _ = key
@@ -631,11 +651,15 @@ class VolumeSelectView(QWidget):
         self.slider.setFocusPolicy(Qt.StrongFocus)
         self.slider.setTickPosition(QSlider.TicksBothSides)
         self.slider.setTickInterval(1)
+        self.slider.setContentsMargins(0,0,0,0)
         self.slider.setMinimum(0)
         self.slider.valueChanged.connect(self.volumeChanged)
 
-        self.sliderTicker = SliderTicker()
-        self.sliderTicker.setContentsMargins(8,0,0,0)
+        self.sliderUpperTicker = SliderTicker()
+        self.sliderUpperTicker.setContentsMargins(5, 0, 5, 0)
+
+        self.sliderLowerTicker = SliderTicker()
+        self.sliderLowerTicker.setContentsMargins(5, 0, 5, 0)
 
         self.volumeLabel.setText('0')
 
@@ -643,8 +667,9 @@ class VolumeSelectView(QWidget):
         vbox = QVBoxLayout()
         vbox.addWidget(self.fileLabel)
         vbox.addWidget(self.volumeLabel)
+        vbox.addWidget(self.sliderUpperTicker)
         vbox.addWidget(self.slider)
-        vbox.addWidget(self.sliderTicker)
+        vbox.addWidget(self.sliderLowerTicker)
         vbox.addWidget(triPlaneView)
         vbox.addWidget(brightnessSelector)
 
@@ -668,8 +693,8 @@ class VolumeSelectView(QWidget):
         self.updateSliderTicks()
 
     def updateSliderTicks(self):
-        self.sliderTicker.setTicks(self.controller.volumeSliderTicks())
-
+        self.sliderLowerTicker.setTicks(self.controller.getVolumeSliderLowerTicksData())
+        self.sliderUpperTicker.setTicks(self.controller.getVolumeSliderUpperTicksData())
 
 class DisplayBrightnessSelectorView(QWidget):
     """The range (dual-value) slider for adjust voxel brightness."""
