@@ -656,10 +656,10 @@ class VolumeSelectView(QWidget):
         self.slider.valueChanged.connect(self.volumeChanged)
 
         self.sliderUpperTicker = SliderTicker()
-        self.sliderUpperTicker.setContentsMargins(5, 0, 5, 0)
+        self.sliderUpperTicker.setContentsMargins(0, 0, 0, 0)
 
         self.sliderLowerTicker = SliderTicker()
-        self.sliderLowerTicker.setContentsMargins(5, 0, 5, 0)
+        self.sliderLowerTicker.setContentsMargins(0, 0, 0, 0)
 
         self.volumeLabel.setText('0')
 
