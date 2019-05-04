@@ -287,7 +287,8 @@ class Controller(QMainWindow):
         """Returns a list of characters to be placed in the view for volume slider upper ticks"""
         ticks = list()
         defaultTick = ' '
-        markerTick = '\u25bc'  # triangle pointing down
+        # markerTick = '\u25bc'  # triangle pointing down
+        markerTick = '\u2691'
 
         for v in range(self.getNumberOfVolumes()):
             ticks.append(defaultTick)
