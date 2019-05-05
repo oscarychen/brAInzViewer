@@ -624,14 +624,17 @@ class SliderTicker(QWidget):
         self.layout().setContentsMargins(0,0,0,0)
 
     def setTicks(self, list):
+        """Receives a list of characters to be displayed"""
         self.clearTicks()
         for item in list:
             label = QLabel(str(item))
             self.layout().addWidget(label)
 
     def clearTicks(self):
+        """Removes items currently in display"""
         for i in reversed(range(self.layout().count())):
-            self.layout().itemAt(i).widget().setParent(None)
+            # self.layout().itemAt(i).widget().setParent(None)
+            self.layout().itemAt(i).widget().deleteLater()
 
 
 
@@ -694,6 +697,7 @@ class VolumeSelectView(QWidget):
         self.updateSliderTicks()
 
     def updateSliderTicks(self):
+        """Called upon by Controller, passes a list of characters to displayed over the volume slider"""
         self.sliderLowerTicker.setTicks(self.controller.getVolumeSliderLowerTicksData())
         self.sliderUpperTicker.setTicks(self.controller.getVolumeSliderUpperTicksData())
 
