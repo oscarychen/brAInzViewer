@@ -5,7 +5,7 @@ import cv2
 
 class DataGenerator(keras.utils.Sequence):
     """Generates data for Keras to process.nii files"""
-    def __init__(self, list_IDs, labels, max_brightness, batch_size=64, dim=(128,64), n_channels=1,
+    def __init__(self, list_IDs, labels, max_brightness, batch_size=64, dim=(128,64,1), n_channels=1,
                  n_classes=10, shuffle=True):
         """- list_IDs should be a list of tupples, each tupples consists of (file_path, vol_num, slice_type, slice_num).
            - labels should be a dictionary, the key is a tupple of (file_path, vol_num, slice_type, slice_num), and value
@@ -55,8 +55,7 @@ class DataGenerator(keras.utils.Sequence):
     
     def __resize(self, img):
         """Ensure consistent size of each slice of data"""
-        resized = cv2.resize(img, self.dim, interpolation=cv2.INTER_NEAREST)
-        return resized
+        return cv2.resize(img, (self.dim[0],self.dim[1]), interpolation=cv2.INTER_NEAREST)
     
     def __load_nii_slice(self, file_path, vol_num, slice_type, slice_num):
         """Load a single slice from nii file"""
@@ -95,7 +94,7 @@ class DataGenerator(keras.utils.Sequence):
         # Generate data for nii slices
         for i, ID in enumerate(list_IDs_temp):
             file_path, vol_num, slice_type, slice_num = ID
-            X[i,] = self.__load_nii_slice(file_path, vol_num, slice_type, slice_num)
-            y[i,] = self.__get_slice_label(file_path, vol_num, slice_type, slice_num)
+            X[i,:,:,0] = self.__load_nii_slice(file_path, vol_num, slice_type, slice_num)
+            y[i] = self.__get_slice_label(file_path, vol_num, slice_type, slice_num)
 
         return X, keras.utils.to_categorical(y, num_classes=self.n_classes)
