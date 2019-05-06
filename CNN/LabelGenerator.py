@@ -1,16 +1,25 @@
 import os
+import pickle
 
-folder = "..\\Calgary_PS_DTI_Dataset\\"
+folder = "../Calgary_PS_DTI_Dataset/"
 labelfname = "Bad750Volumes.csv"
 sliceStart = 96
 sliceEnd = 160
-niiFiles = []
+niiFiles = list()
+sNames = dict()
 for dirpaths, dirs, files in os.walk(folder):
     for file in files:
         if file.endswith('.nii'):
             filePath = os.path.join(dirpaths, file)
             niiFiles.append(filePath)
-
+            sEnd = file.rfind('_')
+            if sEnd == -1:
+                sEnd = len(file)-4
+            sName = file[0:sEnd]
+            sNames[filePath] = sName
+            print(file)
+            print(sName)
+    
 #dict of bad volumes based on scan name
 print("Getting bad volumes from csv")
 badVols = dict()
@@ -30,9 +39,7 @@ print("Generating slice ids and labels")
 idList = list()
 labels = dict()
 for file in niiFiles:
-    sStart = file.rfind('\\')
-    sEnd = file.rfind('_')
-    sName = file[sStart+1:sEnd]
+    sName = sNames[file]
     for volNum in range(35):
         label = 0
         if sName in badVols:
@@ -48,4 +55,13 @@ for file in niiFiles:
             tempId = (file, volNum, 2, sliceNum)
             idList.append(tempId)
             labels[tempId] = label
+            
+print("Getting max values from pickle file")
+with open ("maxVals.pickle", "rb") as f:
+    maxVals = pickle.load(f)
+for file in niiFiles:
+    for vol in range(35):
+        maxVals[file, vol] = maxVals.pop(sNames[file], vol)
 print("Done")
+
+##use idList, labels, and maxVals for machine learning part
