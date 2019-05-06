@@ -17,8 +17,6 @@ for dirpaths, dirs, files in os.walk(folder):
                 sEnd = len(file)-4
             sName = file[0:sEnd]
             sNames[filePath] = sName
-            print(file)
-            print(sName)
     
 #dict of bad volumes based on scan name
 print("Getting bad volumes from csv")
@@ -61,7 +59,7 @@ with open ("maxVals.pickle", "rb") as f:
     maxVals = pickle.load(f)
 for file in niiFiles:
     for vol in range(35):
-        maxVals[file, vol] = maxVals.pop(sNames[file], vol)
+        maxVals[file, vol] = maxVals.pop((sNames[file], vol))
 print("Done")
 
 ##use idList, labels, and maxVals for machine learning part
