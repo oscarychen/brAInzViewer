@@ -55,6 +55,7 @@ for file in niiFiles:
             labels[tempId] = label
             
 print("Getting max values from pickle file")
+maxVals = None
 with open ("maxVals.pickle", "rb") as f:
     maxVals = pickle.load(f)
 for file in niiFiles:
