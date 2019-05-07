@@ -1,3 +1,6 @@
+import os
+os.environ['KERAS_BACKEND']='plaidml.keras.backend'
+
 import numpy as np
 import random
 import time
@@ -25,7 +28,7 @@ val_listIDs = idList[int(len(idList)*0.05):]
 params = {'labels': labels,
           'max_brightness': maxVals,
           'dim': (128,128),
-          'batch_size': 32,
+          'batch_size': 64,
           'n_classes': 2,
           'n_channels': 1,
           'shuffle': True}
@@ -76,4 +79,4 @@ model.compile(loss='categorical_crossentropy',
 model.fit_generator(generator=training_generator,
                     validation_data=validation_generator,
                     use_multiprocessing=True,
-                    workers=6)
+                    workers=2)
