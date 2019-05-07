@@ -14,6 +14,7 @@ from keras.callbacks import ModelCheckpoint
 from tensorflow.keras.callbacks import TensorBoard
 
 labelGenerator = LabelGenerator()
+labelGenerator.generateLabels()
 idList = labelGenerator.get_idList()
 labels = labelGenerator.get_labels()
 maxVals = labelGenerator.get_maxVals()
