@@ -15,7 +15,7 @@ y_test = np.load(prefix + "dataytest.npy")
 #%%
 
 # Design model
-layer_size = 16
+layer_size = 32
 NAME = '{}'.format(int(time.time()))  # model name with timestamp
 model = Sequential()
 tensorboard = TensorBoard(log_dir='logs/{}'.format(NAME))
@@ -27,7 +27,7 @@ model.add(Conv2D(layer_size, (3,3), padding="same", activation="relu", input_sha
 model.add(BatchNormalization())
 model.add(MaxPooling2D(pool_size=(3,3)))
 
-for _ in range(4):
+for _ in range(5):
     model.add(Conv2D(layer_size, (3,3), padding="same", activation="relu"))
     model.add(BatchNormalization())
     model.add(Conv2D(layer_size, (3,3), padding="same", activation="relu"))
