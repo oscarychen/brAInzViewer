@@ -7,10 +7,11 @@ from keras.callbacks import ModelCheckpoint
 from tensorflow.keras.callbacks import TensorBoard
 
 #%%
-X_train = np.load("dataxtrain.npy")
-X_test = np.load("dataxtest.npy")
-y_train = np.load("dataytrain.npy")
-y_test = np.load("dataytest.npy")
+prefix = "C:/Users/Eiden/Desktop/BrainScanMotionDetection/CNN/DataArrays/4/"
+X_train = np.load(prefix + "dataxtrain.npy")
+X_test = np.load(prefix + "dataxtest.npy")
+y_train = np.load(prefix + "dataytrain.npy")
+y_test = np.load(prefix + "dataytest.npy")
 #%%
 
 # Design model
@@ -26,7 +27,7 @@ model.add(Conv2D(layer_size, (3,3), padding="same", activation="relu", input_sha
 model.add(BatchNormalization())
 model.add(MaxPooling2D(pool_size=(3,3)))
 
-for _ in range(2):
+for _ in range(4):
     model.add(Conv2D(layer_size, (3,3), padding="same", activation="relu"))
     model.add(BatchNormalization())
     model.add(Conv2D(layer_size, (3,3), padding="same", activation="relu"))
@@ -52,4 +53,4 @@ model.compile(loss='categorical_crossentropy',
              metrics=['accuracy'])
 
 # Train model on dataset
-model.fit(X_train, y_train,validation_data=(X_test, y_test), batch_size=32, epochs=3)
+model.fit(X_train, y_train,validation_data=(X_test, y_test), batch_size=128, epochs=3, callbacks=callbacks)
