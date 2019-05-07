@@ -10,6 +10,9 @@
 # Pycharm project configuration
 *.idea/
 
+# numpy data files
+*.npy
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -114,3 +117,5 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+
