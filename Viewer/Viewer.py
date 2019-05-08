@@ -18,16 +18,18 @@ import cv2
 VOX_MAX_VAL = 2500
 
 
+# noinspection PyPep8Naming
 class Controller(QMainWindow):
 
     def __init__(self):
         super().__init__()
         self.data = None
 
-        self.detectConfidenceThreshold = 0.6
+        self.detectConfidenceThreshold = 0.7
         self.detectSliceThreshold = 0
         self.detectSliceRange = (112, 144)
-        self.detectResizeDimension = (128,128)
+        self.detectResizeDimension = (128, 128)
+        self.detectorModelPath = '../CNN/weights/1557280788.h5'
         self.motionDetector = MotionDetector(self)
         self.badVolumeList = list()
 
@@ -311,7 +313,8 @@ class Controller(QMainWindow):
             prediction = self.motionDetector.predictVolume(volume)
 
             for slicePrediction in prediction:
-                if slicePrediction[1] > self.detectConfidenceThreshold:
+                # print(f'DEBUG: slicePrediction: {slicePrediction}')
+                if slicePrediction[0] > self.detectConfidenceThreshold:
                     badSliceCount += 1
 
             if badSliceCount > self.detectSliceThreshold:
@@ -323,7 +326,7 @@ class Controller(QMainWindow):
 
 
     def loadPredictionModel(self):
-        model = load_model('../CNN/weights/1557248706.h5')
+        model = load_model(self.detectorModelPath)
         self.motionDetector.setModel(model, self.detectSliceRange, self.detectResizeDimension)
 
 
@@ -341,14 +344,14 @@ class MotionDetector:
         self.detectSliceRange = sliceRange
         self.dim = dimension
 
-    def setDetectSliceRange(self, range):
-        self.detectSliceRange = range
+    def setDetectSliceRange(self, rangeVal):
+        self.detectSliceRange = rangeVal
 
     def setMaxBrightness(self, value):
         self.maxBright = value
 
     def normalize(self, volume):
-        return (volume / np.amax(volume))
+        return volume / np.amax(volume)
 
     def resize(self, volume):
         numSlices = self.detectSliceRange[1] - self.detectSliceRange[0]
@@ -501,10 +504,10 @@ class LabelData:
                         writer.writerow(output)
 
             self.clear()
-            # print(f'DEBUG: Finished writting csv to file')
+            # print(f'DEBUG: Finished writing csv to file')
             return True
         except:
-            # print(f'DEBUG: Error writting csv to file')
+            # print(f'DEBUG: Error writing csv to file')
             return False
 
     def formatForCSV(self, volume, sliceType, sliceNum):
