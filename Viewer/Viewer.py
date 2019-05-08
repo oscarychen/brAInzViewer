@@ -18,7 +18,6 @@ import cv2
 VOX_MAX_VAL = 2500
 
 
-# noinspection PyPep8Naming
 class Controller(QMainWindow):
 
     def __init__(self):
@@ -112,6 +111,7 @@ class Controller(QMainWindow):
 
     def changeFile(self, file):
         """Gets called by the FileListView when a file selection is changed"""
+        self.badVolumeList.clear()
 
         if self.labelData.changed is False:  # no need to save label changes to file
             self.loadNewFile(file)
@@ -308,14 +308,15 @@ class Controller(QMainWindow):
             volume = self.data[:, :, :, v]
             badSliceCount = 0
 
-            self.motionDetector.setMaxBrightness(np.amax(volume))
+            self.motionDetector.setMaxBrightness(np.amax(volume))   # Set normalization parameter
 
             prediction = self.motionDetector.predictVolume(volume)
 
-            for slicePrediction in prediction:
-                # print(f'DEBUG: slicePrediction: {slicePrediction}')
-                if slicePrediction[0] > self.detectConfidenceThreshold:
-                    badSliceCount += 1
+            if prediction is not None:
+                for slicePrediction in prediction:
+                    # print(f'DEBUG: slicePrediction: {slicePrediction}')
+                    if slicePrediction[0] > self.detectConfidenceThreshold:
+                        badSliceCount += 1
 
             if badSliceCount > self.detectSliceThreshold:
                 self.badVolumeList.append('\u2690')  # Bad volume ticker
@@ -326,9 +327,11 @@ class Controller(QMainWindow):
 
 
     def loadPredictionModel(self):
-        model = load_model(self.detectorModelPath)
-        self.motionDetector.setModel(model, self.detectSliceRange, self.detectResizeDimension)
-
+        try:
+            model = load_model(self.detectorModelPath)
+            self.motionDetector.setModel(model, self.detectSliceRange, self.detectResizeDimension)
+        except:
+            print('DEBUG: Failed to load model')
 
 class MotionDetector:
 
@@ -366,9 +369,12 @@ class MotionDetector:
 
     def predictVolume(self, volume):
         slices = self.resize(self.normalize(volume))
-        predictions = self.model.predict(slices)
-        # print(f'DEBUG: Predictions: {predictions}')
-        return predictions
+        try:
+            predictions = self.model.predict(slices)
+            # print(f'DEBUG: Predictions: {predictions}')
+            return predictions
+        except:
+            print('DEBUG: failed to run detection model.')
 
 
 class LabelTypes:
