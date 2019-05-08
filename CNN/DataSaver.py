@@ -1,13 +1,10 @@
 import numpy as np
 import keras
-from keras.models import Sequential
-from keras.utils import Sequence
-from keras.layers import Dense, Dropout, Activation, Flatten, Conv2D, MaxPooling2D, ZeroPadding2D, BatchNormalization
 from DataGeneratorSimple import DataGenerator
 from LabelGenerator import LabelGenerator
 
 #%%
-    
+prefix = "C:/Users/Eiden/Desktop/BrainScanMotionDetection/CNN/DataArrays/under/"
 labelGenerator = LabelGenerator()
 labelGenerator.setSliceStart(124)
 labelGenerator.setSliceEnd(132)
@@ -47,12 +44,13 @@ for i in range(numSamples):
     label = labels[tempId]
     y[i,] = keras.utils.to_categorical(label,2)
 #%%
-prefix = "C:/Users/Eiden/Desktop/BrainScanMotionDetection/CNN/DataArrays/"
+
 np.save(prefix + "datax.npy", X)
 np.save(prefix + "datay.npy", y)
 #%%
-#X = np.load("datax.npy")
-#y = np.load("datay.npy")
+#X = np.load(prefix + "datax.npy")
+#y = np.load(prefix + "datay.npy")
+#%%
 from sklearn.model_selection import train_test_split
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=42)
 #%%

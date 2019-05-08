@@ -7,20 +7,32 @@ from PyQt5 import QtGui
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
+from keras.models import load_model
 import nibabel as nib
 import sys
 import os
 import csv
 import numpy as np
+import cv2
 
 VOX_MAX_VAL = 2500
 
 
+# noinspection PyPep8Naming
 class Controller(QMainWindow):
 
     def __init__(self):
         super().__init__()
         self.data = None
+
+        self.detectConfidenceThreshold = 0.7
+        self.detectSliceThreshold = 0
+        self.detectSliceRange = (112, 144)
+        self.detectResizeDimension = (128, 128)
+        self.detectorModelPath = '../CNN/weights/1557280788.h5'
+        self.motionDetector = MotionDetector(self)
+        self.badVolumeList = list()
+
         self.labelTypes = LabelTypes()
         self.labelData = LabelData(self)
 
@@ -104,12 +116,12 @@ class Controller(QMainWindow):
         if self.labelData.changed is False:  # no need to save label changes to file
             self.loadNewFile(file)
 
-        else:   # save labels to csv file before switching file
+        else:  # save labels to csv file before switching file
             saveSuccess = self.labelData.saveToFile()
             if saveSuccess is False:  # Unsuccesful writing label data to file
                 w = QWidget()
                 QMessageBox.warning(w, 'Warning', 'Error encountered while saving labels related to ' +
-                f'file {self.fileSelected}. Please make sure you have write permission to the directory.')
+                                    f'file {self.fileSelected}. Please make sure you have write permission to the directory.')
                 w.show()
             else:  # Succesfully wrote label data to file, load next file
                 self.loadNewFile(file)
@@ -248,9 +260,6 @@ class Controller(QMainWindow):
         """Gets called by view when views are closed"""
         self.labelData.saveToFile()
 
-    def exportLabelData(self):
-        print('Export label data')
-
     def getNumberOfVolumes(self):
         return self.data.shape[3]
 
@@ -272,7 +281,6 @@ class Controller(QMainWindow):
         for v in range(self.getNumberOfVolumes()):
             ticks.append(defaultTick)
 
-
         for key, labels in self.labelData.labelData.items():
             volume, _, _ = key
             labelFlag = defaultTick
@@ -285,23 +293,82 @@ class Controller(QMainWindow):
 
     def getVolumeSliderUpperTicksData(self):
         """Returns a list of characters to be placed in the view for volume slider upper ticks"""
-        ticks = list()
-        defaultTick = ' '
-        # markerTick = '\u25bc'  # triangle pointing down
-        markerTick = '\u2691'
+        # print(f'DEBUG: badVolumeList: {self.badVolumeList}')
+        return self.badVolumeList
 
-        for v in range(self.getNumberOfVolumes()):
-            ticks.append(defaultTick)
+    def detectBadVolumes(self):
+        """Runs the bad volume detector on the current file"""
 
-        for key, labels in self.labelData.labelData.items():
-            volume, _, _ = key
-            labelFlag = defaultTick
-            for label, value in labels.items():
-                if value is True:
-                    labelFlag = markerTick
-            ticks[volume] = labelFlag
-        # print(f'ticks {ticks}')
-        return ticks
+        if self.motionDetector.model is None:
+            self.loadPredictionModel()
+
+        self.badVolumeList.clear()
+
+        for v in range(self.data.shape[3]):
+            volume = self.data[:, :, :, v]
+            badSliceCount = 0
+
+            self.motionDetector.setMaxBrightness(np.amax(volume))
+
+            prediction = self.motionDetector.predictVolume(volume)
+
+            for slicePrediction in prediction:
+                # print(f'DEBUG: slicePrediction: {slicePrediction}')
+                if slicePrediction[0] > self.detectConfidenceThreshold:
+                    badSliceCount += 1
+
+            if badSliceCount > self.detectSliceThreshold:
+                self.badVolumeList.append('\u2690')  # Bad volume ticker
+            else:
+                self.badVolumeList.append(' ')  # Good volume ticker
+
+        self.volumeSelectView.updateSliderTicks()
+
+
+    def loadPredictionModel(self):
+        model = load_model(self.detectorModelPath)
+        self.motionDetector.setModel(model, self.detectSliceRange, self.detectResizeDimension)
+
+
+class MotionDetector:
+
+    def __init__(self, controller):
+        self.controller = controller
+        self.model = None
+        self.detectSliceRange = (126, 130)
+        self.maxBright = 2000  # used for normalizing voxel brightness values
+        self.dim = (128, 128)
+
+    def setModel(self, model, sliceRange, dimension):
+        self.model = model
+        self.detectSliceRange = sliceRange
+        self.dim = dimension
+
+    def setDetectSliceRange(self, rangeVal):
+        self.detectSliceRange = rangeVal
+
+    def setMaxBrightness(self, value):
+        self.maxBright = value
+
+    def normalize(self, volume):
+        return volume / np.amax(volume)
+
+    def resize(self, volume):
+        numSlices = self.detectSliceRange[1] - self.detectSliceRange[0]
+        resized = np.zeros((numSlices, self.dim[0], self.dim[1], 1))
+        i = 0
+        for s in range(self.detectSliceRange[0], self.detectSliceRange[1]):  # for each axial slice
+            img = volume[s, :, :]
+            img = cv2.resize(img, (self.dim[0], self.dim[1]), interpolation=cv2.INTER_NEAREST)
+            resized[i, :, :, 0] = img
+            i += 1
+        return resized
+
+    def predictVolume(self, volume):
+        slices = self.resize(self.normalize(volume))
+        predictions = self.model.predict(slices)
+        # print(f'DEBUG: Predictions: {predictions}')
+        return predictions
 
 
 class LabelTypes:
@@ -354,8 +421,8 @@ class LabelData:
         self.controller = controller
         self.filePath = None
         self.changed = False
-        self.labelData = dict()     # Key: (volume, sliceType, sliceNum), Value: a dictionary containing:
-                                    # Labels as keys and values for the corresponding label
+        self.labelData = dict()  # Key: (volume, sliceType, sliceNum), Value: a dictionary containing:
+        # Labels as keys and values for the corresponding label
 
     def setFilePath(self, file):
         self.filePath = file
@@ -437,10 +504,10 @@ class LabelData:
                         writer.writerow(output)
 
             self.clear()
-            # print(f'DEBUG: Finished writting csv to file')
+            # print(f'DEBUG: Finished writing csv to file')
             return True
         except:
-            # print(f'DEBUG: Error writting csv to file')
+            # print(f'DEBUG: Error writing csv to file')
             return False
 
     def formatForCSV(self, volume, sliceType, sliceNum):
@@ -590,6 +657,7 @@ class FileListView(QListWidget):
         if len(items) > 0:
             self.setCurrentRow(self.row(items[0]))
 
+
 class View(QMainWindow):
     """Main view window wrapper class"""
 
@@ -600,28 +668,30 @@ class View(QMainWindow):
         self.setCentralWidget(self.volumeSelectView)
 
         mainMenu = self.menuBar()
-        mainMenu.setNativeMenuBar(False)    # Needed for Mac OS
+        mainMenu.setNativeMenuBar(False)  # Needed for Mac OS
         fileMenu = mainMenu.addMenu('Options')
 
-        exportLabelsButton = QAction('Export Labels', self)
-        exportLabelsButton.triggered.connect(self.exportLabelsButtonPressed)
-        fileMenu.addAction(exportLabelsButton)
+        analyzeButton = QAction('Analyze Volumes', self)
+        analyzeButton.triggered.connect(self.analyzeButtonPressed)
+        fileMenu.addAction(analyzeButton)
 
         self.show()
 
-    def exportLabelsButtonPressed(self):
-        self.controller.exportLabelData()
+    def analyzeButtonPressed(self):
+        self.controller.detectBadVolumes()
 
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
         """Triggered when the window is being closed"""
         self.controller.exitProgram()
 
+
 class SliderTicker(QWidget):
     """A widget that sits over/under sliders to add indicator to slider items, such as label existence"""
+
     def __init__(self):
         super(QWidget, self).__init__()
         self.setLayout(QHBoxLayout())
-        self.layout().setContentsMargins(0,0,0,0)
+        self.layout().setContentsMargins(0, 0, 0, 0)
 
     def setTicks(self, list):
         """Receives a list of characters to be displayed"""
@@ -635,7 +705,6 @@ class SliderTicker(QWidget):
         for i in reversed(range(self.layout().count())):
             # self.layout().itemAt(i).widget().setParent(None)
             self.layout().itemAt(i).widget().deleteLater()
-
 
 
 class VolumeSelectView(QWidget):
@@ -655,7 +724,7 @@ class VolumeSelectView(QWidget):
         self.slider.setFocusPolicy(Qt.StrongFocus)
         self.slider.setTickPosition(QSlider.TicksBothSides)
         self.slider.setTickInterval(1)
-        self.slider.setContentsMargins(0,0,0,0)
+        self.slider.setContentsMargins(0, 0, 0, 0)
         self.slider.setMinimum(0)
         self.slider.valueChanged.connect(self.volumeChanged)
 
@@ -700,6 +769,7 @@ class VolumeSelectView(QWidget):
         """Called upon by Controller, passes a list of characters to displayed over the volume slider"""
         self.sliderLowerTicker.setTicks(self.controller.getVolumeSliderLowerTicksData())
         self.sliderUpperTicker.setTicks(self.controller.getVolumeSliderUpperTicksData())
+
 
 class DisplayBrightnessSelectorView(QWidget):
     """The range (dual-value) slider for adjust voxel brightness."""
