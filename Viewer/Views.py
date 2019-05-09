@@ -8,8 +8,37 @@ from PyQt5 import QtGui
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
-
 VOX_MAX_VAL = 2500
+
+
+class View(QMainWindow):
+    """Main view window wrapper class"""
+
+    def __init__(self, controller, volumeSelectView):
+        super().__init__()
+        self.parent = controller
+        self.controller = controller
+        self.volumeSelectView = volumeSelectView
+        self.setCentralWidget(self.volumeSelectView)
+
+        mainMenu = self.menuBar()
+        mainMenu.setNativeMenuBar(False)  # Needed for Mac OS
+        fileMenu = mainMenu.addMenu('Options')
+
+        analyzeButton = QAction('Analyze Volumes', self)
+        analyzeButton.triggered.connect(self.analyzeButtonPressed)
+        fileMenu.addAction(analyzeButton)
+        self.resize(1280, 600)
+        self.show()
+
+    def analyzeButtonPressed(self):
+        self.controller.detectBadVolumes()
+
+    def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
+        """Triggered when the window is being closed"""
+        self.controller.exitProgram()
+
+
 class LabelView(QWidget):
     """label selector"""
 
@@ -44,7 +73,7 @@ class LabelView(QWidget):
             button.clicked[bool].connect(self.button_clicked)
             self.grid.addWidget(button, *position)
 
-        self.show()
+        # self.show()
 
     def updateButtons(self, labels):
         """Called by Controller to update button state from labels
@@ -102,34 +131,6 @@ class FileListView(QListWidget):
             self.setCurrentRow(self.row(items[0]))
 
 
-class View(QMainWindow):
-    """Main view window wrapper class"""
-
-    def __init__(self, controller, volumeSelectView):
-        super().__init__()
-        self.parent = controller
-        self.controller = controller
-        self.volumeSelectView = volumeSelectView
-        self.setCentralWidget(self.volumeSelectView)
-
-        mainMenu = self.menuBar()
-        mainMenu.setNativeMenuBar(False)  # Needed for Mac OS
-        fileMenu = mainMenu.addMenu('Options')
-
-        analyzeButton = QAction('Analyze Volumes', self)
-        analyzeButton.triggered.connect(self.analyzeButtonPressed)
-        fileMenu.addAction(analyzeButton)
-
-        self.show()
-
-    def analyzeButtonPressed(self):
-        self.controller.detectBadVolumes()
-
-    def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
-        """Triggered when the window is being closed"""
-        self.controller.exitProgram()
-
-
 class SliderTicker(QWidget):
     """A widget that sits over/under sliders to add indicator to slider items, such as label existence"""
 
@@ -160,7 +161,6 @@ class VolumeSelectView(QWidget):
         self.parent = controller
         self.controller = controller
         self.setWindowTitle("Nii Viewer and Labeler")
-        self.resize(1280, 600)
 
         self.fileLabel = QLabel('No file loaded.')
         self.volumeLabel = QLabel()
@@ -297,7 +297,7 @@ class DisplayBrightnessSelectorView(QWidget):
         # self.retranslateUi(RangeSlider)
         QMetaObject.connectSlotsByName(RangeSlider)
 
-        self.show()
+        # self.show()
 
     def updateLabel(self):
         # print(f'Voxel sliders: {self.minDisplayVox}, {self.maxDisplayVox}')
