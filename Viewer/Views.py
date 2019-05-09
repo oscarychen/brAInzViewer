@@ -8,7 +8,7 @@ from PyQt5 import QtGui
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
-VOX_MAX_VAL = 2500
+VOX_MAX_VAL = 5000
 
 
 class View(QMainWindow):
@@ -297,25 +297,24 @@ class DisplayBrightnessSelectorView(QWidget):
         # self.retranslateUi(RangeSlider)
         QMetaObject.connectSlotsByName(RangeSlider)
 
-        # self.show()
-
     def updateLabel(self):
         # print(f'Voxel sliders: {self.minDisplayVox}, {self.maxDisplayVox}')
         self.label.setText(f'Voxel Brightness Range:({self.minDisplayVox},{self.maxDisplayVox})')
 
     @pyqtSlot(int)
-    def handleStartSliderValueChange(self, value):
-        self.startSlider.setValue(value)
+    def handleStartSliderValueChange(self, value, updateDisplayOnly=False):
         self.minDisplayVox = self.convertMinSliderToMinVox(value)
         self.updateLabel()
-        self.controller.updateVoxDisplayRange(self.minDisplayVox, self.maxDisplayVox)
+        if updateDisplayOnly == False:
+            self.controller.updateVoxDisplayRange(minValue=self.minDisplayVox)
 
     @pyqtSlot(int)
-    def handleEndSliderValueChange(self, value):
-        self.endSlider.setValue(value)
+    def handleEndSliderValueChange(self, value, updateDisplayOnly=False):
+        # print(f'DEBUG: brightness set to {value}')
         self.maxDisplayVox = self.convertMaxSliderToMaxVox(value)
         self.updateLabel()
-        self.controller.updateVoxDisplayRange(self.minDisplayVox, self.maxDisplayVox)
+        if updateDisplayOnly == False:
+            self.controller.updateVoxDisplayRange(maxValue=self.maxDisplayVox)
 
     def setStartSliderValue(self, value):
         self.startSlider.setValue(value)
