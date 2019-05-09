@@ -32,10 +32,10 @@ class Controller(QMainWindow):
         self.fileSelected = None
 
         self.showSlicing = True
-        self.axialSliceNum = 0
-        self.sagittalSliceNum = 0
-        self.coronalSliceNum = 0
-        self.volumeNum = 0
+        self.axialSliceNum = self.data.shape[2] // 2        # Default axial slice
+        self.sagittalSliceNum = self.data.shape[0] // 2     # Default sagittal slice
+        self.coronalSliceNum = self.data.shape[1] // 2      # Default coronal slice
+        self.volumeNum = 0                                  # Default volume
 
         self.brightnessSelector = DisplayBrightnessSelectorView(self)
 
@@ -43,15 +43,20 @@ class Controller(QMainWindow):
         self.sagittalLabelView = LabelView(self, 'Sagittal', self.labelTypes)
         self.coronalLabelView = LabelView(self, 'Coronal', self.labelTypes)
 
-        self.axialView = SliceView(self, "Axial", self.axialSliceNum, self.axialLabelView)
-        self.sagittalView = SliceView(self, "Sagittal", self.sagittalSliceNum, self.sagittalLabelView)
-        self.coronalView = SliceView(self, "Coronal", self.coronalSliceNum, self.coronalLabelView)
+        self.axialView = SliceView(self, "Axial", self.data.shape[2], self.axialLabelView)
+        self.sagittalView = SliceView(self, "Sagittal", self.data.shape[0], self.sagittalLabelView)
+        self.coronalView = SliceView(self, "Coronal", self.data.shape[1], self.coronalLabelView)
         self.triPlaneView = TriPlaneView(self.axialView, self.sagittalView, self.coronalView)
         self.fileListView = FileListView(self, self.niiPaths)
         self.volumeSelectView = VolumeSelectView(self, self.triPlaneView, self.fileListView, self.brightnessSelector)
-        self.fileListView.setCurrentRow(0)
-        self.updateViews()
+
         self.mainWindow = View(self, self.volumeSelectView)
+        self.updateViews()
+        self.fileListView.setCurrentRow(0)      # Default file
+
+        # Default brightness
+        self.brightnessSelector.handleEndSliderValueChange(np.amax(self.data[:,:,:,self.volumeNum])//6)
+
 
     def openFolder(self):
         """Gets called upon Controller initialization to prompt for directory"""
@@ -300,7 +305,7 @@ class Controller(QMainWindow):
             volume = self.data[:, :, :, v]
             badSliceCount = 0
 
-            self.motionDetector.setMaxBrightness(np.amax(volume))   # Set normalization parameter
+            self.motionDetector.setMaxBrightness(np.amax(volume))  # Set normalization parameter
 
             prediction = self.motionDetector.predictVolume(volume)
 
@@ -316,7 +321,6 @@ class Controller(QMainWindow):
                 self.badVolumeList.append(' ')  # Good volume ticker
 
         self.volumeSelectView.updateSliderTicks()
-
 
     def loadPredictionModel(self):
         try:
