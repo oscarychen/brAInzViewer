@@ -79,6 +79,8 @@ class LabelGenerator:
         return self.labels
     def get_maxVals(self):
         return self.maxVals
+    def get_niiFiles(self):
+        return self.niiFiles
     def setSliceStart(self, sStart):
         self.sliceStart = sStart
     def setSliceEnd(self, sEnd):
