@@ -16,11 +16,11 @@ class Controller(QMainWindow):
         super().__init__()
         self.data = None
 
-        self.detectConfidenceThreshold = 0.7
-        self.detectSliceThreshold = 0
+        self.detectConfidenceThreshold = 0.6
+        self.detectSliceNumProportionThreshold = 0
         self.detectSliceRange = (112, 144)
         self.detectResizeDimension = (128, 128)
-        self.detectorModelPath = '../CNN/weights/1557280788.h5'
+        self.detectorModelPath = '../CNN/weights/b128_4_1557341066_9910.h5'
         self.motionDetector = MotionDetector(self)
         self.badVolumeList = list()
 
@@ -32,10 +32,10 @@ class Controller(QMainWindow):
         self.fileSelected = None
 
         self.showSlicing = True
-        self.axialSliceNum = self.data.shape[2] // 2        # Default axial slice
-        self.sagittalSliceNum = self.data.shape[0] // 2     # Default sagittal slice
-        self.coronalSliceNum = self.data.shape[1] // 2      # Default coronal slice
-        self.volumeNum = 0                                  # Default volume
+        self.axialSliceNum = self.data.shape[2] // 2  # Default axial slice
+        self.sagittalSliceNum = self.data.shape[0] // 2  # Default sagittal slice
+        self.coronalSliceNum = self.data.shape[1] // 2  # Default coronal slice
+        self.volumeNum = 0  # Default volume
 
         self.brightnessSelector = DisplayBrightnessSelectorView(self)
 
@@ -52,11 +52,12 @@ class Controller(QMainWindow):
 
         self.mainWindow = View(self, self.volumeSelectView)
         self.updateViews()
-        self.fileListView.setCurrentRow(0)      # Default file
+        self.fileListView.setCurrentRow(0)  # Default file
 
         # Default brightness
-        self.brightnessSelector.handleEndSliderValueChange(np.amax(self.data[:,:,:,self.volumeNum])//6)
-
+        self.brightnessFactor = 0.1
+        self.brightnessSelector.endSlider.setValue(
+            np.amax(self.data[:, :, :, self.volumeNum]) * self.brightnessFactor)
 
     def openFolder(self):
         """Gets called upon Controller initialization to prompt for directory"""
@@ -85,14 +86,33 @@ class Controller(QMainWindow):
                     niiList.append(filePath)
         return niiList
 
-    def updateVoxDisplayRange(self, minValue, maxValue):
+    def updateVoxDisplayRange(self, **kwargs):
         """Gets called by DisplayBrightnessSelectorView when the brightness sliders are moved"""
-        self.axialView.canvas.setMinVoxVal(minValue)
-        self.axialView.canvas.setMaxVoxVal(maxValue)
-        self.coronalView.canvas.setMinVoxVal(minValue)
-        self.coronalView.canvas.setMaxVoxVal(maxValue)
-        self.sagittalView.canvas.setMinVoxVal(minValue)
-        self.sagittalView.canvas.setMaxVoxVal(maxValue)
+        minValue = None
+        maxValue = None
+
+        if 'minValue' in kwargs.keys():
+            minValue = kwargs['minValue']
+            self.axialView.canvas.setMinVoxVal(minValue)
+            self.coronalView.canvas.setMinVoxVal(minValue)
+            self.sagittalView.canvas.setMinVoxVal(minValue)
+
+        if 'maxValue' in kwargs.keys():
+            maxValue = kwargs['maxValue']
+            self.axialView.canvas.setMaxVoxVal(maxValue)
+            self.coronalView.canvas.setMaxVoxVal(maxValue)
+            self.sagittalView.canvas.setMaxVoxVal(maxValue)
+
+        maxBrightnessVal = np.amax(self.data[:, :, :, self.volumeNum])
+
+        if maxValue is None and minValue is None:    # if function call is from switching volume slider
+            newBrightnessSetting = maxBrightnessVal * self.brightnessFactor
+            self.brightnessSelector.handleEndSliderValueChange(newBrightnessSetting, True)
+            print(f'DEBUG: Updated brightness value to {newBrightnessSetting}')
+        else:
+            self.brightnessFactor = self.brightnessSelector.maxDisplayVox / maxBrightnessVal
+            print(f'DEBUG: Updated brightnessFactor to {self.brightnessFactor}')
+
         self.updateViews()
 
     def checkSelectionRanges(self):
@@ -143,7 +163,7 @@ class Controller(QMainWindow):
         """Gets called by the VolumeSelectView when volume slider is moved"""
         self.volumeNum = value
         self.checkSelectionRanges()
-        self.updateViews()
+        self.updateVoxDisplayRange()
 
     def changeLabel(self, sliceType, label, value):
         """Gets called by the LabelView"""
@@ -303,20 +323,28 @@ class Controller(QMainWindow):
 
         for v in range(self.data.shape[3]):
             volume = self.data[:, :, :, v]
+            totalSliceCount = 0
             badSliceCount = 0
+            badSliceConfidenceAccum = 0
 
             self.motionDetector.setMaxBrightness(np.amax(volume))  # Set normalization parameter
 
             prediction = self.motionDetector.predictVolume(volume)
 
+            # Loop through each slice within the volume
             if prediction is not None:
                 for slicePrediction in prediction:
-                    # print(f'DEBUG: slicePrediction: {slicePrediction}')
-                    if slicePrediction[0] > self.detectConfidenceThreshold:
+                    score = slicePrediction[0]
+                    if score > self.detectConfidenceThreshold:
                         badSliceCount += 1
+                        badSliceConfidenceAccum += score
+                    totalSliceCount += 1
 
-            if badSliceCount > self.detectSliceThreshold:
-                self.badVolumeList.append('\u2690')  # Bad volume ticker
+            # Summarizing prediction scores for the volume
+            if badSliceCount > self.detectSliceNumProportionThreshold * totalSliceCount:
+                volumeScore = int(badSliceConfidenceAccum / badSliceCount * 100)
+                self.badVolumeList.append(volumeScore)
+                # self.badVolumeList.append('\u2690')  # Bad volume ticker
             else:
                 self.badVolumeList.append(' ')  # Good volume ticker
 
