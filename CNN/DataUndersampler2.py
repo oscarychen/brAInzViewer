@@ -1,5 +1,6 @@
 '''
-Randomly selects slices for train and test sets
+Randomly chooses nii files to be part of train and test
+Pulls appropriate slices from the test and train nii files for test and train sets
 '''
 import numpy as np
 import keras
@@ -32,6 +33,7 @@ dataGen = DataGenerator(idList, **params)
 
 #%%
 ratio = 0.5
+trainTestSplit = 0.1
 numSamples = 400000
 maxSamples = len(idList)
 width = 128
@@ -47,7 +49,7 @@ negativeSamples = set()
 positiveSamples = set()
 
 while len(negativeSamples) < int(numSamples * ratio):
-    index = random.randint(1,maxSamples)
+    index = random.randint(1,maxSamples-1)
     if labelVals[index] == 0:
         negativeSamples.add(index)
 while len(positiveSamples) < int(numSamples * ratio):
@@ -58,34 +60,49 @@ negativeLabels = [labelVals[index] for index in negativeSamples]
 positiveLabels = [labelVals[index] for index in positiveSamples]
 print(sum(negativeLabels), sum(positiveLabels))
 allSamples = negativeSamples.union(positiveSamples)
+
+#%%
+#train test split
+niiFiles = labelGenerator.get_niiFiles()
+random.shuffle(niiFiles)
+splitIndex = int(trainTestSplit*len(niiFiles))
+testNiis = niiFiles[0:splitIndex]
+numTestSamples = 0
+for i in allSamples:
+    tempId = idList[i]
+    if tempId[0] in testNiis:
+        numTestSamples += 1
+print(numTestSamples, "test samples, ", numTestSamples/numSamples)
+
 #%%
 print("Pulling Slices")
-X = np.zeros((numSamples,width, height, 1), np.float32)
-y = np.zeros((numSamples,2), int)
+X_train = np.zeros((numSamples-numTestSamples,width, height, 1), np.float32)
+y_train = np.zeros((numSamples-numTestSamples,2), int)
+X_test = np.zeros((numTestSamples,width, height, 1), np.float32)
+y_test = np.zeros((numTestSamples,2), int)
 count = 0
+testIndex = 0
+trainIndex = 0
 for i in allSamples:
     if count%100 == 0:
         print(count)
     tempId = idList[i]
-    X[count,:,:,0] = dataGen.load_nii_slice(*tempId)
     label = labels[tempId]
-    y[count,] = keras.utils.to_categorical(label,2)
+    if tempId[0] in testNiis:
+        X_test[testIndex,:,:,0] = dataGen.load_nii_slice(*tempId)
+        y_test[testIndex,] = keras.utils.to_categorical(label,2)
+        testIndex+=1
+    else:
+        X_train[trainIndex,:,:,0] = dataGen.load_nii_slice(*tempId)
+        y_train[trainIndex,] = keras.utils.to_categorical(label,2)
+        trainIndex+=1
     count+=1
+print(testIndex+1, "test slices pulled", trainIndex+1, "train slices pulled")
 #%%
-print("Saving Full Files")
-prefix = "DataArrays/under400/"
-np.save(prefix + "datax.npy", X)
-np.save(prefix + "datay.npy", y)
-#%%
-#X = np.load(prefix + "datax.npy")
-#y = np.load(prefix + "datay.npy")
-#%%
-print("Splitting")
-from sklearn.model_selection import train_test_split
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=42)
-#%%
+prefix = "DataArrays/"
 print("Saving split files")
 np.save(prefix + "dataxtrain.npy", X_train)
 np.save(prefix + "dataxtest.npy", X_test)
 np.save(prefix + "dataytrain.npy", y_train)
 np.save(prefix + "dataytest.npy", y_test)
+print("Saved")
