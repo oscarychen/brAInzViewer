@@ -17,10 +17,10 @@ class Controller(QMainWindow):
         self.data = None
 
         self.detectConfidenceThreshold = 0.7
-        self.detectSliceNumProportionThreshold = 0
+        self.detectSliceNumProportionThreshold = 0.5
         self.detectSliceRange = (112, 144)
         self.detectResizeDimension = (128, 128)
-        self.detectorModelPath = '../CNN/weights/b128_4_1557341066_9910.h5'
+        self.detectorModelPath = '../CNN/weights/model_v2.h5'
         self.motionDetector = MotionDetector(self)
         self.badVolumeList = list()
 
@@ -147,7 +147,7 @@ class Controller(QMainWindow):
         newUpperBrightness = np.percentile(self.data[:, :, :, self.volumeNum], 90)
         newSliderValue = newUpperBrightness / self.currentUpperBrightness * currentSliderValue - self.brightnessSelector.startSliderMaxValue
         self.brightnessSelector.endSlider.setValue(newSliderValue)
-        print(f'DEBUG: currentSliderValue={currentSliderValue}, newSliderValue={newSliderValue}, currentUpperBrightness={self.currentUpperBrightness}, newUpperBrightness={newUpperBrightness}, , ')
+        # print(f'DEBUG: currentSliderValue={currentSliderValue}, newSliderValue={newSliderValue}, currentUpperBrightness={self.currentUpperBrightness}, newUpperBrightness={newUpperBrightness}, , ')
         self.currentUpperBrightness = newUpperBrightness
 
         self.checkSelectionRanges()
