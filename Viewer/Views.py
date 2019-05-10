@@ -223,7 +223,7 @@ class DisplayBrightnessSelectorView(QWidget):
         super(DisplayBrightnessSelectorView, self).__init__()
         self.parent = controller
         self.label = QLabel('Voxel Display Boundaries')
-        self.startProportion = 0.1  # the start slider's range proportion to the entire range length
+        self.startProportion = 0.03  # the start slider's range proportion to the entire range length
         self.startSliderMaxValue = int(VOX_MAX_VAL * self.startProportion)  # the max value of the start slider
         self.endSliderMaxValue = int(VOX_MAX_VAL * (1 - self.startProportion))  # the max value of the end slider
         self.minDisplayVox = 0  # the converted min value for displaying voxel
@@ -297,24 +297,23 @@ class DisplayBrightnessSelectorView(QWidget):
         # self.retranslateUi(RangeSlider)
         QMetaObject.connectSlotsByName(RangeSlider)
 
+        # self.show()
+
     def updateLabel(self):
         # print(f'Voxel sliders: {self.minDisplayVox}, {self.maxDisplayVox}')
         self.label.setText(f'Voxel Brightness Range:({self.minDisplayVox},{self.maxDisplayVox})')
 
     @pyqtSlot(int)
-    def handleStartSliderValueChange(self, value, updateDisplayOnly=False):
+    def handleStartSliderValueChange(self, value):
         self.minDisplayVox = self.convertMinSliderToMinVox(value)
         self.updateLabel()
-        if updateDisplayOnly == False:
-            self.controller.updateVoxDisplayRange(minValue=self.minDisplayVox)
+        self.controller.updateVoxDisplayRange(self.minDisplayVox, self.maxDisplayVox)
 
     @pyqtSlot(int)
-    def handleEndSliderValueChange(self, value, updateDisplayOnly=False):
-        # print(f'DEBUG: brightness set to {value}')
+    def handleEndSliderValueChange(self, value):
         self.maxDisplayVox = self.convertMaxSliderToMaxVox(value)
         self.updateLabel()
-        if updateDisplayOnly == False:
-            self.controller.updateVoxDisplayRange(maxValue=self.maxDisplayVox)
+        self.controller.updateVoxDisplayRange(self.minDisplayVox, self.maxDisplayVox)
 
     def setStartSliderValue(self, value):
         self.startSlider.setValue(value)

@@ -16,7 +16,7 @@ class Controller(QMainWindow):
         super().__init__()
         self.data = None
 
-        self.detectConfidenceThreshold = 0.6
+        self.detectConfidenceThreshold = 0.7
         self.detectSliceNumProportionThreshold = 0
         self.detectSliceRange = (112, 144)
         self.detectResizeDimension = (128, 128)
@@ -55,9 +55,8 @@ class Controller(QMainWindow):
         self.fileListView.setCurrentRow(0)  # Default file
 
         # Default brightness
-        self.brightnessFactor = 0.1
-        self.brightnessSelector.endSlider.setValue(
-            np.amax(self.data[:, :, :, self.volumeNum]) * self.brightnessFactor)
+        self.currentUpperBrightness = np.percentile(self.data[:, :, :, self.volumeNum], 90)
+        self.brightnessSelector.endSlider.setValue(self.currentUpperBrightness)
 
     def openFolder(self):
         """Gets called upon Controller initialization to prompt for directory"""
@@ -86,33 +85,14 @@ class Controller(QMainWindow):
                     niiList.append(filePath)
         return niiList
 
-    def updateVoxDisplayRange(self, **kwargs):
+    def updateVoxDisplayRange(self, minValue, maxValue):
         """Gets called by DisplayBrightnessSelectorView when the brightness sliders are moved"""
-        minValue = None
-        maxValue = None
-
-        if 'minValue' in kwargs.keys():
-            minValue = kwargs['minValue']
-            self.axialView.canvas.setMinVoxVal(minValue)
-            self.coronalView.canvas.setMinVoxVal(minValue)
-            self.sagittalView.canvas.setMinVoxVal(minValue)
-
-        if 'maxValue' in kwargs.keys():
-            maxValue = kwargs['maxValue']
-            self.axialView.canvas.setMaxVoxVal(maxValue)
-            self.coronalView.canvas.setMaxVoxVal(maxValue)
-            self.sagittalView.canvas.setMaxVoxVal(maxValue)
-
-        maxBrightnessVal = np.amax(self.data[:, :, :, self.volumeNum])
-
-        if maxValue is None and minValue is None:    # if function call is from switching volume slider
-            newBrightnessSetting = maxBrightnessVal * self.brightnessFactor
-            self.brightnessSelector.handleEndSliderValueChange(newBrightnessSetting, True)
-            print(f'DEBUG: Updated brightness value to {newBrightnessSetting}')
-        else:
-            self.brightnessFactor = self.brightnessSelector.maxDisplayVox / maxBrightnessVal
-            print(f'DEBUG: Updated brightnessFactor to {self.brightnessFactor}')
-
+        self.axialView.canvas.setMinVoxVal(minValue)
+        self.axialView.canvas.setMaxVoxVal(maxValue)
+        self.coronalView.canvas.setMinVoxVal(minValue)
+        self.coronalView.canvas.setMaxVoxVal(maxValue)
+        self.sagittalView.canvas.setMinVoxVal(minValue)
+        self.sagittalView.canvas.setMaxVoxVal(maxValue)
         self.updateViews()
 
     def checkSelectionRanges(self):
@@ -162,8 +142,16 @@ class Controller(QMainWindow):
     def changeVolume(self, value):
         """Gets called by the VolumeSelectView when volume slider is moved"""
         self.volumeNum = value
+
+        currentSliderValue = self.brightnessSelector.endSlider.value() + self.brightnessSelector.startSliderMaxValue
+        newUpperBrightness = np.percentile(self.data[:, :, :, self.volumeNum], 90)
+        newSliderValue = newUpperBrightness / self.currentUpperBrightness * currentSliderValue - self.brightnessSelector.startSliderMaxValue
+        self.brightnessSelector.endSlider.setValue(newSliderValue)
+        print(f'DEBUG: currentSliderValue={currentSliderValue}, newSliderValue={newSliderValue}, currentUpperBrightness={self.currentUpperBrightness}, newUpperBrightness={newUpperBrightness}, , ')
+        self.currentUpperBrightness = newUpperBrightness
+
         self.checkSelectionRanges()
-        self.updateVoxDisplayRange()
+        self.updateViews()
 
     def changeLabel(self, sliceType, label, value):
         """Gets called by the LabelView"""
@@ -335,12 +323,14 @@ class Controller(QMainWindow):
             if prediction is not None:
                 for slicePrediction in prediction:
                     score = slicePrediction[0]
+
                     if score > self.detectConfidenceThreshold:
                         badSliceCount += 1
                         badSliceConfidenceAccum += score
-                    totalSliceCount += 1
 
-            # Summarizing prediction scores for the volume
+                    totalSliceCount+=1
+
+            # Summarizing predictin scores for the volume
             if badSliceCount > self.detectSliceNumProportionThreshold * totalSliceCount:
                 volumeScore = int(badSliceConfidenceAccum / badSliceCount * 100)
                 self.badVolumeList.append(volumeScore)
