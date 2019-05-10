@@ -17,10 +17,10 @@ class Controller(QMainWindow):
         self.data = None
 
         self.detectConfidenceThreshold = 0.7
-        self.detectSliceThreshold = 0
+        self.detectSliceNumProportionThreshold = 0.5
         self.detectSliceRange = (112, 144)
         self.detectResizeDimension = (128, 128)
-        self.detectorModelPath = '../CNN/weights/1557280788.h5'
+        self.detectorModelPath = 'models/model_v2.h5'
         self.motionDetector = MotionDetector(self)
         self.badVolumeList = list()
 
@@ -32,10 +32,10 @@ class Controller(QMainWindow):
         self.fileSelected = None
 
         self.showSlicing = True
-        self.axialSliceNum = self.data.shape[2] // 2        # Default axial slice
-        self.sagittalSliceNum = self.data.shape[0] // 2     # Default sagittal slice
-        self.coronalSliceNum = self.data.shape[1] // 2      # Default coronal slice
-        self.volumeNum = 0                                  # Default volume
+        self.axialSliceNum = self.data.shape[2] // 2  # Default axial slice
+        self.sagittalSliceNum = self.data.shape[0] // 2  # Default sagittal slice
+        self.coronalSliceNum = self.data.shape[1] // 2  # Default coronal slice
+        self.volumeNum = 0  # Default volume
 
         self.brightnessSelector = DisplayBrightnessSelectorView(self)
 
@@ -52,11 +52,11 @@ class Controller(QMainWindow):
 
         self.mainWindow = View(self, self.volumeSelectView)
         self.updateViews()
-        self.fileListView.setCurrentRow(0)      # Default file
+        self.fileListView.setCurrentRow(0)  # Default file
 
         # Default brightness
-        self.brightnessSelector.handleEndSliderValueChange(np.amax(self.data[:,:,:,self.volumeNum])//6)
-
+        self.currentUpperBrightness = np.percentile(self.data[:, :, :, self.volumeNum], 90)
+        self.brightnessSelector.endSlider.setValue(self.currentUpperBrightness)
 
     def openFolder(self):
         """Gets called upon Controller initialization to prompt for directory"""
@@ -142,6 +142,14 @@ class Controller(QMainWindow):
     def changeVolume(self, value):
         """Gets called by the VolumeSelectView when volume slider is moved"""
         self.volumeNum = value
+
+        currentSliderValue = self.brightnessSelector.endSlider.value() + self.brightnessSelector.startSliderMaxValue
+        newUpperBrightness = np.percentile(self.data[:, :, :, self.volumeNum], 90)
+        newSliderValue = newUpperBrightness / self.currentUpperBrightness * currentSliderValue - self.brightnessSelector.startSliderMaxValue
+        self.brightnessSelector.endSlider.setValue(newSliderValue)
+        # print(f'DEBUG: currentSliderValue={currentSliderValue}, newSliderValue={newSliderValue}, currentUpperBrightness={self.currentUpperBrightness}, newUpperBrightness={newUpperBrightness}, , ')
+        self.currentUpperBrightness = newUpperBrightness
+
         self.checkSelectionRanges()
         self.updateViews()
 
@@ -303,20 +311,30 @@ class Controller(QMainWindow):
 
         for v in range(self.data.shape[3]):
             volume = self.data[:, :, :, v]
+            totalSliceCount = 0
             badSliceCount = 0
+            badSliceConfidenceAccum = 0
 
             self.motionDetector.setMaxBrightness(np.amax(volume))  # Set normalization parameter
 
             prediction = self.motionDetector.predictVolume(volume)
 
+            # Loop through each slice within the volume
             if prediction is not None:
                 for slicePrediction in prediction:
-                    # print(f'DEBUG: slicePrediction: {slicePrediction}')
-                    if slicePrediction[0] > self.detectConfidenceThreshold:
-                        badSliceCount += 1
+                    score = slicePrediction[0]
 
-            if badSliceCount > self.detectSliceThreshold:
-                self.badVolumeList.append('\u2690')  # Bad volume ticker
+                    if score > self.detectConfidenceThreshold:
+                        badSliceCount += 1
+                        badSliceConfidenceAccum += score
+
+                    totalSliceCount+=1
+
+            # Summarizing predictin scores for the volume
+            if badSliceCount > self.detectSliceNumProportionThreshold * totalSliceCount:
+                volumeScore = int(badSliceConfidenceAccum / badSliceCount * 100)
+                self.badVolumeList.append(volumeScore)
+                # self.badVolumeList.append('\u2690')  # Bad volume ticker
             else:
                 self.badVolumeList.append(' ')  # Good volume ticker
 

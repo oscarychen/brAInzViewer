@@ -8,7 +8,7 @@ from PyQt5 import QtGui
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
-VOX_MAX_VAL = 2500
+VOX_MAX_VAL = 5000
 
 
 class View(QMainWindow):
@@ -223,7 +223,7 @@ class DisplayBrightnessSelectorView(QWidget):
         super(DisplayBrightnessSelectorView, self).__init__()
         self.parent = controller
         self.label = QLabel('Voxel Display Boundaries')
-        self.startProportion = 0.1  # the start slider's range proportion to the entire range length
+        self.startProportion = 0.03  # the start slider's range proportion to the entire range length
         self.startSliderMaxValue = int(VOX_MAX_VAL * self.startProportion)  # the max value of the start slider
         self.endSliderMaxValue = int(VOX_MAX_VAL * (1 - self.startProportion))  # the max value of the end slider
         self.minDisplayVox = 0  # the converted min value for displaying voxel
@@ -305,14 +305,12 @@ class DisplayBrightnessSelectorView(QWidget):
 
     @pyqtSlot(int)
     def handleStartSliderValueChange(self, value):
-        self.startSlider.setValue(value)
         self.minDisplayVox = self.convertMinSliderToMinVox(value)
         self.updateLabel()
         self.controller.updateVoxDisplayRange(self.minDisplayVox, self.maxDisplayVox)
 
     @pyqtSlot(int)
     def handleEndSliderValueChange(self, value):
-        self.endSlider.setValue(value)
         self.maxDisplayVox = self.convertMaxSliderToMaxVox(value)
         self.updateLabel()
         self.controller.updateVoxDisplayRange(self.minDisplayVox, self.maxDisplayVox)
