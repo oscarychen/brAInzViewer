@@ -20,7 +20,7 @@ class Controller(QMainWindow):
         self.detectSliceNumProportionThreshold = 0.5
         self.detectSliceRange = (112, 144)
         self.detectResizeDimension = (128, 128)
-        self.detectorModelPath = '../CNN/weights/model_v2.h5'
+        self.detectorModelPath = 'models/model_v2.h5'
         self.motionDetector = MotionDetector(self)
         self.badVolumeList = list()
 
