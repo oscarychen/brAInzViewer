@@ -18,9 +18,12 @@ class Controller(QMainWindow):
 
         self.detectConfidenceThreshold = 0.7
         self.detectSliceNumProportionThreshold = 0.5
-        self.detectSliceRange = (112, 144)
+        halfWidth = 50
+        lowerRange = 128-halfWidth
+        upperRange = 128+halfWidth
+        self.detectSliceRange = (lowerRange, upperRange)
         self.detectResizeDimension = (128, 128)
-        self.detectorModelPath = 'models/model_v2.h5'
+        self.detectorModelPath = 'models/model_v3.h5'
         self.motionDetector = MotionDetector(self)
         self.badVolumeList = list()
 
@@ -57,6 +60,8 @@ class Controller(QMainWindow):
         # Default brightness
         self.currentUpperBrightness = np.percentile(self.data[:, :, :, self.volumeNum], 90)
         self.brightnessSelector.endSlider.setValue(self.currentUpperBrightness)
+
+        self.mainWindow.setStatusMessage('')
 
     def openFolder(self):
         """Gets called upon Controller initialization to prompt for directory"""
@@ -304,16 +309,21 @@ class Controller(QMainWindow):
     def detectBadVolumes(self):
         """Runs the bad volume detector on the current file"""
 
+        numVols = self.data.shape[3]
+        self.mainWindow.setStatusMessage('Running detection model. Please wait...')
+
         if self.motionDetector.model is None:
             self.loadPredictionModel()
 
         self.badVolumeList.clear()
 
-        for v in range(self.data.shape[3]):
+        badVolCount = 0
+        for v in range(numVols):
+            print("Detecting slices in volume", v)
             volume = self.data[:, :, :, v]
             totalSliceCount = 0
             badSliceCount = 0
-            badSliceConfidenceAccum = 0
+            sliceConfidenceAccum = 0
 
             self.motionDetector.setMaxBrightness(np.amax(volume))  # Set normalization parameter
 
@@ -326,18 +336,20 @@ class Controller(QMainWindow):
 
                     if score > self.detectConfidenceThreshold:
                         badSliceCount += 1
-                        badSliceConfidenceAccum += score
-
+                        
+                    sliceConfidenceAccum += score
                     totalSliceCount+=1
-
+            
             # Summarizing predictin scores for the volume
+            
             if badSliceCount > self.detectSliceNumProportionThreshold * totalSliceCount:
-                volumeScore = int(badSliceConfidenceAccum / badSliceCount * 100)
+                volumeScore = int(sliceConfidenceAccum / totalSliceCount * 100)
                 self.badVolumeList.append(volumeScore)
+                badVolCount+=1
                 # self.badVolumeList.append('\u2690')  # Bad volume ticker
             else:
                 self.badVolumeList.append(' ')  # Good volume ticker
-
+        self.mainWindow.setStatusMessage('Detection complete. Potential volumes with motion: {}'.format(badVolCount))
         self.volumeSelectView.updateSliderTicks()
 
     def loadPredictionModel(self):

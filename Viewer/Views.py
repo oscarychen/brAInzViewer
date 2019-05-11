@@ -38,6 +38,9 @@ class View(QMainWindow):
         """Triggered when the window is being closed"""
         self.controller.exitProgram()
 
+    def setStatusMessage(self, message):
+        self.statusBar().showMessage(message)
+
 
 class LabelView(QWidget):
     """label selector"""
