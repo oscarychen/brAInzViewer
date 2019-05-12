@@ -1,8 +1,7 @@
 from Views import *
 from Models import LabelData, LabelTypes
 from MachineLearning import MotionDetector
-
-from PyQt5.QtWidgets import QMainWindow
+from PyQt5.QtWidgets import QWidget, QMainWindow
 from keras.models import load_model
 import nibabel as nib
 import os
@@ -31,8 +30,12 @@ class Controller(QMainWindow):
         self.labelData = LabelData(self)
 
         self.niiPaths = list()
+        self.nii = None
+        self.rootFolder = None
         self.openFolder()
         self.fileSelected = None
+
+        self.exportRootFolder = None
 
         self.showSlicing = True
         self.axialSliceNum = self.data.shape[2] // 2  # Default axial slice
@@ -65,9 +68,10 @@ class Controller(QMainWindow):
 
     def openFolder(self):
         """Gets called upon Controller initialization to prompt for directory"""
-        folder = QFileDialog.getExistingDirectory(None, caption='Select folder to open', directory='../')
-        if folder:
-            self.niiPaths = self.getNiiFilePaths(folder)
+        self.rootFolder = QFileDialog.getExistingDirectory(None, caption='Select folder to open', directory='../')
+        print(f'DEBUG: opening directory: {self.rootFolder}')
+        if self.rootFolder:
+            self.niiPaths = self.getNiiFilePaths(self.rootFolder)
             if len(self.niiPaths) == 0:
                 w = QWidget()
                 QMessageBox.warning(w, "Error", "No Nii Files Found")
@@ -75,6 +79,7 @@ class Controller(QMainWindow):
                 # print("No Nii Files Found")
                 exit(0)
             self.fileSelected = self.niiPaths[0]
+            print(f'DEBUG: File selected: {self.fileSelected}')
             nii = nib.load(self.fileSelected)
             self.data = nii.get_fdata()
         else:
@@ -132,8 +137,8 @@ class Controller(QMainWindow):
         """Loads a new file into view"""
         self.clearPlots()
         self.fileSelected = file
-        nii = nib.load(self.fileSelected)
-        self.data = nii.get_fdata()
+        self.nii = nib.load(self.fileSelected)
+        self.data = self.nii.get_fdata()
         self.volumeSelectView.fileLabel.setText(file)
         self.volumeSelectView.setMaxSlider(self.data.shape[3] - 1)
         self.labelData.setFilePath(self.fileSelected)  # set labelData to read new file
@@ -358,3 +363,43 @@ class Controller(QMainWindow):
             self.motionDetector.setModel(model, self.detectSliceRange, self.detectResizeDimension)
         except:
             print('DEBUG: Failed to load model')
+
+    def saveNillFile(self):
+
+        if self.exportRootFolder is None:
+            self.setExportDirectory()
+
+        relPath = os.path.relpath(self.fileSelected, self.rootFolder)
+        exportPath = os.path.join(self.exportRootFolder, relPath)
+        print(f'DEUBG: exportPath={exportPath}')
+
+        os.makedirs(os.path.dirname(exportPath), exist_ok=True)
+
+        badVolumes = list()
+
+        for key, labelDict in self.labelData.labelData.items():
+            volNum, _, _ = key
+
+            badVolumeFlag = False
+
+            for label, labelVal in labelDict.items():
+                if labelVal is True:
+                    badVolumeFlag = True
+                    break
+
+            if badVolumeFlag is True:
+                badVolumes.append(volNum)
+
+        print(f'DEBUG: badVolumes={badVolumes}')
+
+        goodVolumes = [vol for vol in range(self.data.shape[3]) if vol not in badVolumes]
+
+        newData = self.data[:,:,:, goodVolumes]
+        affine = self.nii.affine
+        header = self.nii.header
+        newNii = nib.Nifti1Image(newData, affine, header)
+        newNii.to_filename(exportPath)
+
+    def setExportDirectory(self):
+        self.exportRootFolder = QFileDialog.getExistingDirectory(None, caption='Select folder to export to',
+                                                                directory='../')
