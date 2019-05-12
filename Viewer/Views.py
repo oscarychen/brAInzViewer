@@ -28,8 +28,23 @@ class View(QMainWindow):
         analyzeButton = QAction('Analyze Volumes', self)
         analyzeButton.triggered.connect(self.analyzeButtonPressed)
         fileMenu.addAction(analyzeButton)
+
+        saveFileButton = QAction('Save to File', self)
+        saveFileButton.triggered.connect(self.saveFileButtonPressed)
+        fileMenu.addAction(saveFileButton)
+
+        setExportFolderButton = QAction('Set Export Directory', self)
+        setExportFolderButton.triggered.connect(self.setExportFolderButtonPressed)
+        fileMenu.addAction(setExportFolderButton)
+
         self.resize(1280, 600)
         self.show()
+
+    def setExportFolderButtonPressed(self):
+        self.controller.setExportDirectory()
+
+    def saveFileButtonPressed(self):
+        self.controller.saveNillFile()
 
     def analyzeButtonPressed(self):
         self.controller.detectBadVolumes()
