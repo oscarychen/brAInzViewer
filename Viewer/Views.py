@@ -38,6 +38,7 @@ class View(QMainWindow):
         fileMenu.addAction(setExportFolderButton)
 
         self.resize(1280, 600)
+        self.setWindowTitle("br[AI]nz Viewer")
         self.show()
 
     def setExportFolderButtonPressed(self):
@@ -178,7 +179,6 @@ class VolumeSelectView(QWidget):
         super(VolumeSelectView, self).__init__()
         self.parent = controller
         self.controller = controller
-        self.setWindowTitle("Nii Viewer and Labeler")
 
         self.fileLabel = QLabel('No file loaded.')
         self.volumeLabel = QLabel()
