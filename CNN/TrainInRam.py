@@ -24,14 +24,14 @@ print("Loaded")
 #%%
 
 batchSize = 32
-numGroups = 5
-dropout1 = 0.8
-dropout2 = 0.8
+numGroups = 4
+dropout1 = 0.9
+dropout2 = 0.7
 comment="SF"
 # Design model
-layer_size = 32
+layer_size = 64
 
-NAME = 'n{}_b{}_da{}_db{}_{}_{}'.format(numGroups,batchSize,int(dropout1*100), int(dropout2*100),comment,int(time.time()))  # model name with timestamp
+NAME = 'n{}_b{}_da{}_db{}_i{}_{}_{}'.format(numGroups,batchSize,int(dropout1*100), int(dropout2*100), layer_size, comment, int(time.time()))  # model name with timestamp
 print(NAME)
 
 print("Setting up model")
