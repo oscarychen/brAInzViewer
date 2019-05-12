@@ -1,14 +1,15 @@
 import numpy as np
 import cv2
+import tensorflow as tf
+graph = tf.get_default_graph()
 
 class MotionDetector:
 
-    def __init__(self, controller):
-        self.controller = controller
+    def __init__(self):
         self.model = None
-        self.detectSliceRange = (126, 130)
-        self.maxBright = 2000  # used for normalizing voxel brightness values
-        self.dim = (128, 128)
+        self.detectSliceRange = None
+        self.maxBright = None  # used for normalizing voxel brightness values
+        self.dim = None
 
     def setModel(self, model, sliceRange, dimension):
         self.model = model
@@ -38,9 +39,13 @@ class MotionDetector:
     def predictVolume(self, volume):
         slices = self.resize(self.normalize(volume))
         try:
-            predictions = self.model.predict(slices)
+            global graph
+            with graph.as_default():
+                prediction = self.model.predict(slices)
+            
             # print(f'DEBUG: Predictions: {predictions}')
-            return predictions
-        except:
+            return prediction
+        except Exception as e:
             print('DEBUG: failed to run detection model.')
+            print(e)
 

@@ -8,6 +8,7 @@ import nibabel as nib
 import os
 import numpy as np
 from PyQt5.QtWidgets import QFileDialog, QMessageBox
+from PyQt5.QtCore import QThread, pyqtSignal
 
 
 class Controller(QMainWindow):
@@ -24,7 +25,7 @@ class Controller(QMainWindow):
         self.detectSliceRange = (lowerRange, upperRange)
         self.detectResizeDimension = (128, 128)
         self.detectorModelPath = 'models/model_v3.h5'
-        self.motionDetector = MotionDetector(self)
+        self.motionDetector = MotionDetector()
         self.badVolumeList = list()
 
         self.labelTypes = LabelTypes()
@@ -305,19 +306,29 @@ class Controller(QMainWindow):
         """Returns a list of characters to be placed in the view for volume slider upper ticks"""
         # print(f'DEBUG: badVolumeList: {self.badVolumeList}')
         return self.badVolumeList
+    
+    def loadPredictionModel(self):
+        try:
+            model = load_model(self.detectorModelPath)
+            self.motionDetector.setModel(model, self.detectSliceRange, self.detectResizeDimension)
+        except:
+            print('DEBUG: Failed to load model')
 
     def detectBadVolumes(self):
         """Runs the bad volume detector on the current file"""
-
-        numVols = self.data.shape[3]
-        self.mainWindow.setStatusMessage('Running detection model. Please wait...')
-
         if self.motionDetector.model is None:
             self.loadPredictionModel()
-
+        self.predictions = []
+        self.thread = RunModel(self.data, self.motionDetector)
+        self.thread.results.connect(self.updateDetectionResults)
+        self.thread.start()
+    
+    def processPredictions(self):
         self.badVolumeList.clear()
-
+        self.mainWindow.setStatusMessage('Running detection model. Please wait...')
+        numVols = self.data.shape[3]
         badVolCount = 0
+        
         for v in range(numVols):
             print("Detecting slices in volume", v)
             volume = self.data[:, :, :, v]
@@ -325,10 +336,7 @@ class Controller(QMainWindow):
             badSliceCount = 0
             sliceConfidenceAccum = 0
 
-            self.motionDetector.setMaxBrightness(np.amax(volume))  # Set normalization parameter
-
-            prediction = self.motionDetector.predictVolume(volume)
-
+            prediction = self.predictions[v]
             # Loop through each slice within the volume
             if prediction is not None:
                 for slicePrediction in prediction:
@@ -346,15 +354,37 @@ class Controller(QMainWindow):
                 volumeScore = int(sliceConfidenceAccum / totalSliceCount * 100)
                 self.badVolumeList.append(volumeScore)
                 badVolCount+=1
-                # self.badVolumeList.append('\u2690')  # Bad volume ticker
             else:
                 self.badVolumeList.append(' ')  # Good volume ticker
         self.mainWindow.setStatusMessage('Detection complete. Potential volumes with motion: {}'.format(badVolCount))
         self.volumeSelectView.updateSliderTicks()
+    
+    def updateDetectionResults(self, prediction):
+        print(prediction)
+        self.predictions.append(prediction)
+        self.mainWindow.setStatusMessage('{}'.format(len(self.predictions)))
+        print(len(self.predictions))
+        if len(self.predictions) == self.data.shape[3]:
+            self.processPredictions()
+    
 
-    def loadPredictionModel(self):
-        try:
-            model = load_model(self.detectorModelPath)
-            self.motionDetector.setModel(model, self.detectSliceRange, self.detectResizeDimension)
-        except:
-            print('DEBUG: Failed to load model')
+class RunModel(QThread):
+    results = pyqtSignal(object)
+
+    def __init__(self, data, motionDetector):
+        QThread.__init__(self)
+        self.data = data
+        self.motionDetector = motionDetector
+
+    def runModel(self):
+        numVols = self.data.shape[3]
+        for v in range(numVols):
+            print("Detecting slices in volume", v)
+            volume = self.data[:, :, :, v]
+            self.motionDetector.setMaxBrightness(np.amax(volume))  # Set normalization parameter
+            prediction = self.motionDetector.predictVolume(volume)
+            print(prediction)
+            self.results.emit(prediction)
+
+    def run(self):
+        self.runModel()
