@@ -30,11 +30,16 @@ class MotionDetector:
         return volume / np.amax(volume)
 
     def resize(self, volume):
-        numSlices = self.detectSliceRange[1] - self.detectSliceRange[0]
-        resized = np.zeros((numSlices, self.dim[0], self.dim[1], 1))
+        #numSlices = self.detectSliceRange[1] - self.detectSliceRange[0]
+        resized = np.zeros((20, self.dim[0], self.dim[1], 1))
         i = 0
-        for s in range(self.detectSliceRange[0], self.detectSliceRange[1]):  # for each axial slice
+        for s in range(self.detectSliceRange[0], self.detectSliceRange[1], 10):  # for each sagittal slice
             img = volume[s, :, :]
+            img = cv2.resize(img, (self.dim[0], self.dim[1]), interpolation=cv2.INTER_NEAREST)
+            resized[i, :, :, 0] = img
+            i += 1
+        for s in range(self.detectSliceRange[0], self.detectSliceRange[1], 10):  # for each coronal slice
+            img = volume[:, s, :]
             img = cv2.resize(img, (self.dim[0], self.dim[1]), interpolation=cv2.INTER_NEAREST)
             resized[i, :, :, 0] = img
             i += 1

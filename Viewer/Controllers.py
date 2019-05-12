@@ -414,7 +414,7 @@ class Controller(QMainWindow):
             
             # Summarizing predictin scores for the volume
             
-            if badSliceCount > self.detectSliceNumProportionThreshold * totalSliceCount:
+            if badSliceCount >= self.detectSliceNumProportionThreshold * totalSliceCount:
                 volumeScore = int(sliceConfidenceAccum / totalSliceCount * 100)
                 self.badVolumeList.append(volumeScore)
                 badVolCount+=1
