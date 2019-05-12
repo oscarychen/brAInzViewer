@@ -138,6 +138,9 @@ class FileListView(QListWidget):
             maxListWidth = self.sizeHintForColumn(0)
         self.setMinimumWidth(maxListWidth)
         self.itemSelectionChanged.connect(self.selectedFileChanged)
+    
+    def lockView(self, lock):
+        self.setDisabled(lock)
 
     def selectedFileChanged(self):
         file = self.currentItem().text()

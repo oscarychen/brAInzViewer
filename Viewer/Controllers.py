@@ -6,8 +6,8 @@ from keras.models import load_model
 import nibabel as nib
 import os
 import numpy as np
-from PyQt5.QtWidgets import QFileDialog, QMessageBox
-from PyQt5.QtCore import QThread, pyqtSignal
+from PyQt5.QtWidgets import QFileDialog, QMessageBox, QProgressDialog
+from PyQt5.QtCore import QThread, pyqtSignal 
 
 
 class Controller(QMainWindow):
@@ -362,6 +362,19 @@ class Controller(QMainWindow):
 
     def detectBadVolumes(self):
         """Runs the bad volume detector on the current file"""
+        self.fileListView.lockView(True)
+        self.progress = QProgressDialog()
+        self.progress.setWindowTitle("Detection")
+        self.progress.setLabelText("Loading Model...")
+        self.progress.setRange(0,self.data.shape[3])
+        self.progress.setValue(0)
+        #self.progress.setCancelButtonText("Close")
+        #self.progress.canceled.connect(self.progress.close)
+        self.progress.setAutoClose(True)
+        self.progress.setCancelButton(None)
+        #self.progress.setWindowFlags(Qt.FramelessWindowHint)
+        self.progress.show()
+        
         if self.motionDetector.model is None:
             self.loadPredictionModel()
         else:
@@ -369,6 +382,7 @@ class Controller(QMainWindow):
     
     def runDetection(self):
         print("\nStarting predictions...")
+        self.progress.setLabelText("Detecting Motion...")
         self.predictions = []
         self.thread = RunModel(self.data, self.motionDetector)
         self.thread.results.connect(self.updateDetectionResults)
@@ -408,10 +422,12 @@ class Controller(QMainWindow):
                 self.badVolumeList.append(' ')  # Good volume ticker
         self.mainWindow.setStatusMessage('Detection complete. Potential volumes with motion: {}'.format(badVolCount))
         self.volumeSelectView.updateSliderTicks()
+        self.fileListView.lockView(False)
     
     def updateDetectionResults(self, prediction):
         self.predictions.append(prediction)
-        self.mainWindow.setStatusMessage('Predicted volume {}'.format(len(self.predictions)))
+        self.progress.setValue(len(self.predictions))
+        self.mainWindow.setStatusMessage('Detecting on volume {}'.format(len(self.predictions)))
         if len(self.predictions) == self.data.shape[3]:
             self.processPredictions()
 
