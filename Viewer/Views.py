@@ -81,18 +81,17 @@ class LabelView(QWidget):
         positions = [(row, col) for row in range(5) for col in range(2)]
 
         # populate buttons in view
-        for position, label in zip(positions, labels):
-            button = QPushButton(label)
-            self.buttons.append(button)
-            button.setCheckable(True)
+        if labels is not None:
+            for position, label in zip(positions, labels):
+                button = QPushButton(label)
+                self.buttons.append(button)
+                button.setCheckable(True)
 
-            button.setStyleSheet("color: black; background-color: rgb(150,170,200);")
-            # button.setStyleSheet("QPushButton#DCButton:checked {color: black; background-color: green;")
+                button.setStyleSheet("color: black; background-color: rgb(150,170,200);")
+                # button.setStyleSheet("QPushButton#DCButton:checked {color: black; background-color: green;")
 
-            button.clicked[bool].connect(self.button_clicked)
-            self.grid.addWidget(button, *position)
-
-        # self.show()
+                button.clicked[bool].connect(self.button_clicked)
+                self.grid.addWidget(button, *position)
 
     def updateButtons(self, labels):
         """Called by Controller to update button state from labels
@@ -346,13 +345,32 @@ class DisplayBrightnessSelectorView(QWidget):
 class TriPlaneView(QWidget):
     """View wrapper that contains 3 PlaneView objects"""
 
-    def __init__(self, axial, sagittal, coronal):
+    def __init__(self, controller, axial, sagittal, coronal):
         super(TriPlaneView, self).__init__()
-        self.controller = None
+        self.controller = controller
+
+        analyzeButton = QPushButton('Analyze Volumes')
+        analyzeButton.setCheckable(False)
+        analyzeButton.setStyleSheet("color: black; background-color: rgb(150,170,200);")
+        analyzeButton.clicked.connect(self.controller.detectBadVolumes)
+
+        self.excludeButton = QPushButton('Exclude Volume')
+        self.excludeButton.setCheckable(True)
+        self.excludeButton.setStyleSheet("color: black; background-color: rgb(150,170,200);")
+        self.excludeButton.clicked[bool].connect(self.controller.markVolumeForExclusion)
+
+        exportButton = QPushButton('Export')
+        exportButton.setCheckable(False)
+        exportButton.setStyleSheet("color: black; background-color: rgb(150,170,200);")
+        exportButton.clicked.connect(self.controller.saveNillFile)
+
         grid = QGridLayout()
-        grid.addWidget(axial, 0, 0)
-        grid.addWidget(sagittal, 0, 1)
-        grid.addWidget(coronal, 0, 2)
+        grid.addWidget(analyzeButton, 0, 0)
+        grid.addWidget(self.excludeButton, 0, 1)
+        grid.addWidget(exportButton, 0, 2)
+        grid.addWidget(axial, 1, 0)
+        grid.addWidget(sagittal, 1, 1)
+        grid.addWidget(coronal, 1, 2)
 
         self.setLayout(grid)
 

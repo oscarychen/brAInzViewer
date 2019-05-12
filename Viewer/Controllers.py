@@ -1,5 +1,5 @@
 from Views import *
-from Models import LabelData, LabelTypes
+from Models import LabelData, LabelTypes, BadVolumes
 from MachineLearning import MotionDetector
 from PyQt5.QtWidgets import QWidget, QMainWindow
 from keras.models import load_model
@@ -19,16 +19,17 @@ class Controller(QMainWindow):
         self.detectConfidenceThreshold = 0.7
         self.detectSliceNumProportionThreshold = 0.5
         halfWidth = 50
-        lowerRange = 128-halfWidth
-        upperRange = 128+halfWidth
+        lowerRange = 128 - halfWidth
+        upperRange = 128 + halfWidth
         self.detectSliceRange = (lowerRange, upperRange)
         self.detectResizeDimension = (128, 128)
         self.detectorModelPath = 'models/model_v3.h5'
         self.motionDetector = MotionDetector()
-        self.badVolumeList = list()
+        self.volumeWithLabelsList = list()  # A list of volumes with labels
 
         self.labelTypes = LabelTypes()
         self.labelData = LabelData(self)
+        self.badVolumes = BadVolumes(self)
 
         self.niiPaths = list()
         self.nii = None
@@ -53,7 +54,7 @@ class Controller(QMainWindow):
         self.axialView = SliceView(self, "Axial", self.data.shape[2], self.axialLabelView)
         self.sagittalView = SliceView(self, "Sagittal", self.data.shape[0], self.sagittalLabelView)
         self.coronalView = SliceView(self, "Coronal", self.data.shape[1], self.coronalLabelView)
-        self.triPlaneView = TriPlaneView(self.axialView, self.sagittalView, self.coronalView)
+        self.triPlaneView = TriPlaneView(self, self.axialView, self.sagittalView, self.coronalView)
         self.fileListView = FileListView(self, self.niiPaths)
         self.volumeSelectView = VolumeSelectView(self, self.triPlaneView, self.fileListView, self.brightnessSelector)
 
@@ -119,17 +120,19 @@ class Controller(QMainWindow):
 
     def changeFile(self, file):
         """Gets called by the FileListView when a file selection is changed"""
-        self.badVolumeList.clear()
+        self.volumeWithLabelsList.clear()
 
-        if self.labelData.changed is False:  # no need to save label changes to file
+        if self.labelData.changed is False and self.badVolumes.changed is False:  # no need to save changes to file
             self.loadNewFile(file)
 
-        else:  # save labels to csv file before switching file
-            saveSuccess = self.labelData.saveToFile()
+        else:
+            # save labels to csv file before switching file
+            saveSuccess = self.labelData.saveToFile() and self.badVolumes.saveToFile()
             if saveSuccess is False:  # Unsuccesful writing label data to file
                 w = QWidget()
-                QMessageBox.warning(w, 'Warning', 'Error encountered while saving labels related to ' +
-                                    f'file {self.fileSelected}. Please make sure you have write permission to the directory.')
+                QMessageBox.warning(w, 'Warning', 'Error encountered while saving files related to ' +
+                                    f'file {self.fileSelected}. ' +
+                                    'Please make sure you have write permission to the directories.')
                 w.show()
             else:  # Succesfully wrote label data to file, load next file
                 self.loadNewFile(file)
@@ -143,12 +146,13 @@ class Controller(QMainWindow):
         self.volumeSelectView.fileLabel.setText(file)
         self.volumeSelectView.setMaxSlider(self.data.shape[3] - 1)
         self.labelData.setFilePath(self.fileSelected)  # set labelData to read new file
+        self.badVolumes.setFilePath(self.fileSelected)  # set badVolumes to read new file
         self.checkSelectionRanges()
         self.updateViews()
 
-    def writeLabelsToFile(self):
-        """Writes label data to csv file, returns True if write is successful"""
-        return self.labelData.saveToFile()
+    # def writeLabelsToFile(self):
+    #     """Writes label data to csv file, returns True if write is successful"""
+    #     return self.labelData.saveToFile()
 
     def changeVolume(self, value):
         """Gets called by the VolumeSelectView when volume slider is moved"""
@@ -163,6 +167,10 @@ class Controller(QMainWindow):
 
         self.checkSelectionRanges()
         self.updateViews()
+
+    def markVolumeForExclusion(self):
+        """Called upon by view to mark a volume for exclusion"""
+        self.badVolumes.markVolumeForExclusion(self.volumeNum)
 
     def changeLabel(self, sliceType, label, value):
         """Gets called by the LabelView"""
@@ -307,11 +315,14 @@ class Controller(QMainWindow):
         # print(f'ticks {ticks}')
         return ticks
 
+    def getVolumeSliderMiddleTicksData(self):
+        pass
+
     def getVolumeSliderUpperTicksData(self):
         """Returns a list of characters to be placed in the view for volume slider upper ticks"""
         # print(f'DEBUG: badVolumeList: {self.badVolumeList}')
-        return self.badVolumeList
-    
+        return self.volumeWithLabelsList
+
     def saveNillFile(self):
 
         if self.exportRootFolder is None:
@@ -354,7 +365,8 @@ class Controller(QMainWindow):
 
     def loadPredictionModel(self):
         try:
-            self.thread = LoadModel(self.motionDetector, self.detectorModelPath, self.detectSliceRange, self.detectResizeDimension)
+            self.thread = LoadModel(self.motionDetector, self.detectorModelPath, self.detectSliceRange,
+                                    self.detectResizeDimension)
             self.thread.results.connect(self.runDetection)
             self.thread.start()
         except:
@@ -379,7 +391,7 @@ class Controller(QMainWindow):
             self.loadPredictionModel()
         else:
             self.runDetection()
-    
+
     def runDetection(self):
         print("\nStarting predictions...")
         self.progress.setLabelText("Detecting Motion...")
@@ -389,11 +401,11 @@ class Controller(QMainWindow):
         self.thread.start()
 
     def processPredictions(self):
-        self.badVolumeList.clear()
+        self.volumeWithLabelsList.clear()
         self.mainWindow.setStatusMessage('Running detection model. Please wait...')
         numVols = self.data.shape[3]
         badVolCount = 0
-        
+
         for v in range(numVols):
             volume = self.data[:, :, :, v]
             totalSliceCount = 0
@@ -408,28 +420,30 @@ class Controller(QMainWindow):
 
                     if score > self.detectConfidenceThreshold:
                         badSliceCount += 1
-                        
+
                     sliceConfidenceAccum += score
-                    totalSliceCount+=1
-            
+                    totalSliceCount += 1
+
             # Summarizing predictin scores for the volume
             
             if badSliceCount >= self.detectSliceNumProportionThreshold * totalSliceCount:
+
                 volumeScore = int(sliceConfidenceAccum / totalSliceCount * 100)
-                self.badVolumeList.append(volumeScore)
-                badVolCount+=1
+                self.volumeWithLabelsList.append(volumeScore)
+                badVolCount += 1
             else:
-                self.badVolumeList.append(' ')  # Good volume ticker
+                self.volumeWithLabelsList.append(' ')  # Good volume ticker
         self.mainWindow.setStatusMessage('Detection complete. Potential volumes with motion: {}'.format(badVolCount))
         self.volumeSelectView.updateSliderTicks()
         self.fileListView.lockView(False)
-    
+
     def updateDetectionResults(self, prediction):
         self.predictions.append(prediction)
         self.progress.setValue(len(self.predictions))
         self.mainWindow.setStatusMessage('Detecting on volume {}'.format(len(self.predictions)))
         if len(self.predictions) == self.data.shape[3]:
             self.processPredictions()
+
 
 class LoadModel(QThread):
     results = pyqtSignal()
@@ -440,14 +454,15 @@ class LoadModel(QThread):
         self.detectorModelPath = detectorModelPath
         self.detectSliceRange = detectSliceRange
         self.detectResizeDimension = detectResizeDimension
-    
+
     def loadModel(self):
-        #model = load_model(self.detectorModelPath)
+        # model = load_model(self.detectorModelPath)
         self.motionDetector.setModel(self.detectorModelPath, self.detectSliceRange, self.detectResizeDimension)
         self.results.emit()
-    
+
     def run(self):
         self.loadModel()
+
 
 class RunModel(QThread):
     results = pyqtSignal(object)
@@ -468,4 +483,3 @@ class RunModel(QThread):
 
     def run(self):
         self.runModel()
-
