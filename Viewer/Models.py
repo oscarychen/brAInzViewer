@@ -124,7 +124,7 @@ class LabelData:
         Returns True if write is succesful, otherwise False"""
         try:
             labelFile = os.path.splitext(self.filePath)[0] + '_labels.csv'
-            print(f'DEBUG: Writting to filename {labelFile}')
+            # print(f'DEBUG: Writting to filename {labelFile}')
             with open(labelFile, mode='w') as file:
                 writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
                 writer.writerow(['slice_sagittal', 'slice_coronal', 'slice_axial', 'volume', 'labels', 'comment'])
