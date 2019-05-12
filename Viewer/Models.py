@@ -8,7 +8,7 @@ class LabelTypes:
     def __init__(self):
         self.labelData = dict()
         # Key: label category, Value: list of labels the category
-        self.labelData = {'Labels': ['Bad']}
+        self.labelData = None  # {'Labels': ['Gap', 'Blur', 'Dim']}
 
     def getLabelKeys(self):
         """Return list of keys"""
@@ -16,7 +16,8 @@ class LabelTypes:
 
     def getLabelValueByKey(self, key):
         """Return list of values for a given key"""
-        return self.labelData[key]
+        if self.labelData is not None:
+            return self.labelData[key]
 
     def addKey(self, category):
         """Add a new category"""
@@ -41,6 +42,57 @@ class LabelTypes:
         if label in labels:
             labels.remove(label)
             self.labelData[category] = labels
+
+
+class BadVolumes:
+    """Keeps track of bad volumes for a given nii file"""
+
+    def __init__(self, controller):
+        self.controller = controller
+        self.filePath = None
+        self.changed = False
+        self.data = list()
+
+    def setFilePath(self, file):
+        self.filePath = file
+        self.clear()
+        self.changed = False
+        self.readFromFile()
+
+    def readFromFile(self):
+        try:
+            badVolumesFile = os.path.splitext(self.filePath)[0] + '_badvolumes.csv'
+            rowCount = 0
+            with open(badVolumesFile) as file:
+                reader = csv.reader(file, delimiter=',')
+                for row in reader:
+                    if rowCount > 0:
+                        self.data.append(row[0])
+        except:
+            pass
+
+    def clear(self):
+        self.data.clear()
+
+    def markVolumeForExclusion(self, vol):
+        self.data.append(vol)
+        print(f'DEBUG: bad volumes: {self.data}')
+
+    def saveToFile(self):
+        try:
+            badVolumesFile = os.path.splitext(self.filePath)[0] + '_badvolumes.csv'
+            with open(badVolumesFile, mode='w') as file:
+                writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+                writer.writerow(['bad_volume_num'])
+
+                for vol in self.data:
+                    writer.writerow(vol)
+
+            self.clear()
+            return True
+
+        except:
+            return False
 
 
 class LabelData:
