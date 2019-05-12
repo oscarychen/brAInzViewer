@@ -29,6 +29,7 @@ class View(QMainWindow):
         analyzeButton.triggered.connect(self.analyzeButtonPressed)
         fileMenu.addAction(analyzeButton)
         self.resize(1280, 600)
+        self.setWindowTitle("br[AI]nz Viewer")
         self.show()
 
     def analyzeButtonPressed(self):
@@ -163,7 +164,6 @@ class VolumeSelectView(QWidget):
         super(VolumeSelectView, self).__init__()
         self.parent = controller
         self.controller = controller
-        self.setWindowTitle("Nii Viewer and Labeler")
 
         self.fileLabel = QLabel('No file loaded.')
         self.volumeLabel = QLabel()

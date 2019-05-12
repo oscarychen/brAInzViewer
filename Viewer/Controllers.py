@@ -309,8 +309,9 @@ class Controller(QMainWindow):
     
     def loadPredictionModel(self):
         try:
-            model = load_model(self.detectorModelPath)
-            self.motionDetector.setModel(model, self.detectSliceRange, self.detectResizeDimension)
+            self.thread = LoadModel(self.motionDetector, self.detectorModelPath, self.detectSliceRange, self.detectResizeDimension)
+            self.thread.results.connect(self.runDetection)
+            self.thread.start()
         except:
             print('DEBUG: Failed to load model')
 
@@ -318,11 +319,16 @@ class Controller(QMainWindow):
         """Runs the bad volume detector on the current file"""
         if self.motionDetector.model is None:
             self.loadPredictionModel()
+        else:
+            self.runDetection()
+    
+    def runDetection(self):
+        print("\nStarting predictions...")
         self.predictions = []
         self.thread = RunModel(self.data, self.motionDetector)
         self.thread.results.connect(self.updateDetectionResults)
         self.thread.start()
-    
+
     def processPredictions(self):
         self.badVolumeList.clear()
         self.mainWindow.setStatusMessage('Running detection model. Please wait...')
@@ -330,7 +336,6 @@ class Controller(QMainWindow):
         badVolCount = 0
         
         for v in range(numVols):
-            print("Detecting slices in volume", v)
             volume = self.data[:, :, :, v]
             totalSliceCount = 0
             badSliceCount = 0
@@ -360,13 +365,28 @@ class Controller(QMainWindow):
         self.volumeSelectView.updateSliderTicks()
     
     def updateDetectionResults(self, prediction):
-        print(prediction)
         self.predictions.append(prediction)
-        self.mainWindow.setStatusMessage('{}'.format(len(self.predictions)))
-        print(len(self.predictions))
+        self.mainWindow.setStatusMessage('Predicted volume {}'.format(len(self.predictions)))
         if len(self.predictions) == self.data.shape[3]:
             self.processPredictions()
+
+class LoadModel(QThread):
+    results = pyqtSignal()
+
+    def __init__(self, motionDetector, detectorModelPath, detectSliceRange, detectResizeDimension):
+        QThread.__init__(self)
+        self.motionDetector = motionDetector
+        self.detectorModelPath = detectorModelPath
+        self.detectSliceRange = detectSliceRange
+        self.detectResizeDimension = detectResizeDimension
     
+    def loadModel(self):
+        #model = load_model(self.detectorModelPath)
+        self.motionDetector.setModel(self.detectorModelPath, self.detectSliceRange, self.detectResizeDimension)
+        self.results.emit()
+    
+    def run(self):
+        self.loadModel()
 
 class RunModel(QThread):
     results = pyqtSignal(object)
@@ -383,7 +403,6 @@ class RunModel(QThread):
             volume = self.data[:, :, :, v]
             self.motionDetector.setMaxBrightness(np.amax(volume))  # Set normalization parameter
             prediction = self.motionDetector.predictVolume(volume)
-            print(prediction)
             self.results.emit(prediction)
 
     def run(self):

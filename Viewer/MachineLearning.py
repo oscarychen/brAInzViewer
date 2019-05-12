@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 import tensorflow as tf
 graph = tf.get_default_graph()
+from keras.models import load_model
 
 class MotionDetector:
 
@@ -11,8 +12,11 @@ class MotionDetector:
         self.maxBright = None  # used for normalizing voxel brightness values
         self.dim = None
 
-    def setModel(self, model, sliceRange, dimension):
-        self.model = model
+    def setModel(self, modelPath, sliceRange, dimension):
+        #self.model = model
+        global graph
+        with graph.as_default():
+            self.model = load_model(modelPath)
         self.detectSliceRange = sliceRange
         self.dim = dimension
 

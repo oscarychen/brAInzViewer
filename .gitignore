@@ -1,6 +1,7 @@
 *._*
 *.DS_Store
 
+b2000/*.csv
 # Ignore MRI scan files
 *.nii
 *.bvec
