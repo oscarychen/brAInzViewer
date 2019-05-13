@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import (QMainWindow, QVBoxLayout, QSizePolicy,
 from PyQt5.QtCore import Qt, pyqtSlot, QMetaObject, QSize
 
 from PyQt5 import QtGui
-
+from sys import platform
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
@@ -137,7 +137,7 @@ class FileListView(QListWidget):
             maxListWidth = self.sizeHintForColumn(0)
         self.setMinimumWidth(maxListWidth)
         self.itemSelectionChanged.connect(self.selectedFileChanged)
-    
+
     def lockView(self, lock):
         self.setDisabled(lock)
 
@@ -194,13 +194,10 @@ class VolumeSelectView(QWidget):
         self.slider.valueChanged.connect(self.volumeChanged)
 
         self.volumeExclusionTicker = SliderTicker()
-        self.volumeExclusionTicker.setContentsMargins(0, 0, 0, 0)
 
         self.predictionScoreTicker = SliderTicker()
-        self.predictionScoreTicker.setContentsMargins(0, 0, 0, 0)
 
         self.labelIndicatorTicker = SliderTicker()
-        self.labelIndicatorTicker.setContentsMargins(0, 0, 0, 0)
 
         self.volumeLabel.setText('0')
 
@@ -209,11 +206,27 @@ class VolumeSelectView(QWidget):
         vbox.addWidget(self.fileLabel)
         vbox.addWidget(self.volumeLabel)
         vbox.addWidget(self.predictionScoreTicker)
-        vbox.addWidget(self.slider)
+
+        hbox = QHBoxLayout()
+        hbox.addWidget(self.slider)
+        vbox.addLayout(hbox)
+
         vbox.addWidget(self.volumeExclusionTicker)
         vbox.addWidget(self.labelIndicatorTicker)
         vbox.addWidget(triPlaneView)
         vbox.addWidget(brightnessSelector)
+
+        # Some OS-dependent layout adjustments
+        if platform == "win32":
+            hbox.setContentsMargins(0, 0, 7, 0)
+            self.volumeExclusionTicker.setContentsMargins(0, 0, 0, 0)
+            self.predictionScoreTicker.setContentsMargins(0, 0, 0, 0)
+            self.labelIndicatorTicker.setContentsMargins(0, 0, 0, 0)
+        else:
+            hbox.setContentsMargins(0, 0, 0, 0)
+            self.volumeExclusionTicker.setContentsMargins(5, 0, 0, 0)
+            self.predictionScoreTicker.setContentsMargins(5, 0, 0, 0)
+            self.labelIndicatorTicker.setContentsMargins(5, 0, 0, 0)
 
         # Right-half: file list area
         hbox = QHBoxLayout()
@@ -547,4 +560,3 @@ class PlotCanvas(FigureCanvas):
             self.ax.axvline(x=lines['coronal_v'], color='green', linewidth=linewidth, linestyle=linestyle)
 
         self.draw()
-
