@@ -73,13 +73,11 @@ class BadVolumes:
             with open(badVolumesFile) as file:
                 reader = csv.reader(file, delimiter=',')
                 for row in reader:
-                    print("ROW CONTENTS: ", row)
-                    print("ROW TYPE", type(row))
                     if rowCount > 0:
                         self.data.append(int(row[0]))
                     rowCount += 1
         except Exception as e:
-            print('DEBUG: BadVolumes encountered error while reading from file.')
+            print('No existing bad volume marking file found')
 
     def clear(self):
         self.data.clear()
@@ -92,7 +90,6 @@ class BadVolumes:
                 writer.writerow(['bad_volume_num'])
 
                 for vol in self.data:
-                    print("WRITING", vol)
                     writer.writerow([vol])
 
             self.clear()
