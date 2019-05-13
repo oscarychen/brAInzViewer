@@ -185,7 +185,7 @@ class LabelData:
         try:
             labelFile = os.path.splitext(self.filePath)[0] + '_labels.csv'
             # print(f'DEBUG: Writting to filename {labelFile}')
-            with open(labelFile, mode='w') as file:
+            with open(labelFile, mode='w', newline='') as file:
                 writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
                 writer.writerow(['slice_sagittal', 'slice_coronal', 'slice_axial', 'volume', 'labels', 'comment'])
 

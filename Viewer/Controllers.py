@@ -370,20 +370,7 @@ class Controller(QMainWindow):
 
         os.makedirs(os.path.dirname(exportPath), exist_ok=True)
 
-        badVolumes = list()
-
-        for key, labelDict in self.labelData.labelData.items():
-            volNum, _, _ = key
-
-            badVolumeFlag = False
-
-            for label, labelVal in labelDict.items():
-                if labelVal is True:
-                    badVolumeFlag = True
-                    break
-
-            if badVolumeFlag is True:
-                badVolumes.append(volNum)
+        badVolumes = self.badVolumes.data
 
         print(f'DEBUG: badVolumes={badVolumes}')
 
