@@ -1,4 +1,3 @@
-
 import os
 import csv
 
@@ -53,6 +52,14 @@ class BadVolumes:
         self.changed = False
         self.data = list()
 
+    def append(self, value):
+        self.data.append(value)
+        self.changed = True
+
+    def remove(self, value):
+        self.data.remove(value)
+        self.changed = True
+
     def setFilePath(self, file):
         self.filePath = file
         self.clear()
@@ -67,16 +74,13 @@ class BadVolumes:
                 reader = csv.reader(file, delimiter=',')
                 for row in reader:
                     if rowCount > 0:
-                        self.data.append(row[0])
+                        self.data.append(int(row[0]))
+                    rowCount += 1
         except:
-            pass
+            print('DEBUG: BadVolumes encountered error while reading from file.')
 
     def clear(self):
         self.data.clear()
-
-    def markVolumeForExclusion(self, vol):
-        self.data.append(vol)
-        print(f'DEBUG: bad volumes: {self.data}')
 
     def saveToFile(self):
         try:
@@ -86,12 +90,13 @@ class BadVolumes:
                 writer.writerow(['bad_volume_num'])
 
                 for vol in self.data:
-                    writer.writerow(vol)
+                    writer.writerow([vol])
 
             self.clear()
             return True
 
         except:
+            print('DEBUG: BadVolumes encountered error while writing to file.')
             return False
 
 

@@ -7,7 +7,7 @@ import nibabel as nib
 import os
 import numpy as np
 from PyQt5.QtWidgets import QFileDialog, QMessageBox, QProgressDialog
-from PyQt5.QtCore import QThread, pyqtSignal 
+from PyQt5.QtCore import QThread, pyqtSignal
 
 
 class Controller(QMainWindow):
@@ -164,13 +164,24 @@ class Controller(QMainWindow):
         self.brightnessSelector.endSlider.setValue(newSliderValue)
         # print(f'DEBUG: currentSliderValue={currentSliderValue}, newSliderValue={newSliderValue}, currentUpperBrightness={self.currentUpperBrightness}, newUpperBrightness={newUpperBrightness}, , ')
         self.currentUpperBrightness = newUpperBrightness
-
         self.checkSelectionRanges()
         self.updateViews()
 
     def markVolumeForExclusion(self):
-        """Called upon by view to mark a volume for exclusion"""
-        self.badVolumes.markVolumeForExclusion(self.volumeNum)
+        """Called upon by view to mark a volume for exclusion, add/remove vol number"""
+        if self.volumeNum not in self.badVolumes.data:  # Add
+            self.badVolumes.append(self.volumeNum)
+            self.triPlaneView.updateButtonState(True)
+        else:  # Remove
+            self.badVolumes.remove(self.volumeNum)
+            self.triPlaneView.updateButtonState(False)
+
+        self.volumeSelectView.updateSliderTicks()
+
+        print(f'BadVolumes: {self.badVolumes.data}')
+
+    def getExcludedVolumeList(self):
+        return self.badVolumes.data
 
     def changeLabel(self, sliceType, label, value):
         """Gets called by the LabelView"""
@@ -204,6 +215,11 @@ class Controller(QMainWindow):
     def updateViews(self):
         """Updates View classes"""
         self.volumeSelectView.updateView(self.volumeNum, self.fileSelected)
+
+        if self.volumeNum in self.badVolumes.data:
+            self.triPlaneView.updateButtonState(True)
+        else:
+            self.triPlaneView.updateButtonState(False)
 
         self.axialView.setMaxSlider(self.data.shape[2] - 1)
         self.sagittalView.setMaxSlider(self.data.shape[0] - 1)
@@ -283,6 +299,7 @@ class Controller(QMainWindow):
     def exitProgram(self):
         """Gets called by view when views are closed"""
         self.labelData.saveToFile()
+        self.badVolumes.saveToFile()
 
     def getNumberOfVolumes(self):
         return self.data.shape[3]
@@ -296,7 +313,7 @@ class Controller(QMainWindow):
     def getNumberOfCoronalSlices(self):
         return self.data.shape[1]
 
-    def getVolumeSliderLowerTicksData(self):
+    def getVolumeSliderLabelIndicatorTicksData(self):
         """Returns a list of characters to be placed in the view for volume slider lower ticks"""
         ticks = list()
         defaultTick = ' '
@@ -315,10 +332,29 @@ class Controller(QMainWindow):
         # print(f'ticks {ticks}')
         return ticks
 
-    def getVolumeSliderMiddleTicksData(self):
-        pass
+    def getVolumeSliderExclusionTicksData(self):
+        """Return a list of characters to be placed on the volume slider indicating volumes to be excluded"""
+        ticks = list()
+        defaultTick = ' '
+        markerTick = '\u25b2'
 
-    def getVolumeSliderUpperTicksData(self):
+        for v in range(self.getNumberOfVolumes()):
+            ticks.append(defaultTick)
+
+        for row in self.badVolumes.data:
+            ticks[row] = markerTick
+
+        return ticks
+
+
+    def getCurrentVolumeExclusionState(self):
+        """Returns true if the current volume is in exclusion list"""
+        if self.volumeNum in self.badVolumes.data:
+            return True
+        else:
+            return False
+
+    def getVolumeSliderPredictionScoreTicksData(self):
         """Returns a list of characters to be placed in the view for volume slider upper ticks"""
         # print(f'DEBUG: badVolumeList: {self.badVolumeList}')
         return self.volumeWithLabelsList
@@ -378,15 +414,15 @@ class Controller(QMainWindow):
         self.progress = QProgressDialog()
         self.progress.setWindowTitle("Detection")
         self.progress.setLabelText("Loading Model...")
-        self.progress.setRange(0,self.data.shape[3])
+        self.progress.setRange(0, self.data.shape[3])
         self.progress.setValue(0)
-        #self.progress.setCancelButtonText("Close")
-        #self.progress.canceled.connect(self.progress.close)
+        # self.progress.setCancelButtonText("Close")
+        # self.progress.canceled.connect(self.progress.close)
         self.progress.setAutoClose(True)
         self.progress.setCancelButton(None)
-        #self.progress.setWindowFlags(Qt.FramelessWindowHint)
+        # self.progress.setWindowFlags(Qt.FramelessWindowHint)
         self.progress.show()
-        
+
         if self.motionDetector.model is None:
             self.loadPredictionModel()
         else:
@@ -425,7 +461,7 @@ class Controller(QMainWindow):
                     totalSliceCount += 1
 
             # Summarizing predictin scores for the volume
-            
+
             if badSliceCount >= self.detectSliceNumProportionThreshold * totalSliceCount:
 
                 volumeScore = int(sliceConfidenceAccum / totalSliceCount * 100)

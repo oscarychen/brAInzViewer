@@ -193,11 +193,14 @@ class VolumeSelectView(QWidget):
         self.slider.setMinimum(0)
         self.slider.valueChanged.connect(self.volumeChanged)
 
-        self.sliderUpperTicker = SliderTicker()
-        self.sliderUpperTicker.setContentsMargins(0, 0, 0, 0)
+        self.volumeExclusionTicker = SliderTicker()
+        self.volumeExclusionTicker.setContentsMargins(0, 0, 0, 0)
 
-        self.sliderLowerTicker = SliderTicker()
-        self.sliderLowerTicker.setContentsMargins(0, 0, 0, 0)
+        self.predictionScoreTicker = SliderTicker()
+        self.predictionScoreTicker.setContentsMargins(0, 0, 0, 0)
+
+        self.labelIndicatorTicker = SliderTicker()
+        self.labelIndicatorTicker.setContentsMargins(0, 0, 0, 0)
 
         self.volumeLabel.setText('0')
 
@@ -205,9 +208,10 @@ class VolumeSelectView(QWidget):
         vbox = QVBoxLayout()
         vbox.addWidget(self.fileLabel)
         vbox.addWidget(self.volumeLabel)
-        vbox.addWidget(self.sliderUpperTicker)
+        vbox.addWidget(self.predictionScoreTicker)
         vbox.addWidget(self.slider)
-        vbox.addWidget(self.sliderLowerTicker)
+        vbox.addWidget(self.volumeExclusionTicker)
+        vbox.addWidget(self.labelIndicatorTicker)
         vbox.addWidget(triPlaneView)
         vbox.addWidget(brightnessSelector)
 
@@ -232,8 +236,9 @@ class VolumeSelectView(QWidget):
 
     def updateSliderTicks(self):
         """Called upon by Controller, passes a list of characters to displayed over the volume slider"""
-        self.sliderLowerTicker.setTicks(self.controller.getVolumeSliderLowerTicksData())
-        self.sliderUpperTicker.setTicks(self.controller.getVolumeSliderUpperTicksData())
+        self.volumeExclusionTicker.setTicks(self.controller.getVolumeSliderExclusionTicksData())
+        self.labelIndicatorTicker.setTicks(self.controller.getVolumeSliderLabelIndicatorTicksData())
+        self.predictionScoreTicker.setTicks(self.controller.getVolumeSliderPredictionScoreTicksData())
 
 
 class DisplayBrightnessSelectorView(QWidget):
@@ -373,6 +378,9 @@ class TriPlaneView(QWidget):
         grid.addWidget(coronal, 1, 2)
 
         self.setLayout(grid)
+
+    def updateButtonState(self, state):
+        self.excludeButton.setChecked(state)
 
 
 class SliceView(QWidget):
