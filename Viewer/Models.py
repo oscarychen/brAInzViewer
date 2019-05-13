@@ -73,10 +73,12 @@ class BadVolumes:
             with open(badVolumesFile) as file:
                 reader = csv.reader(file, delimiter=',')
                 for row in reader:
+                    print("ROW CONTENTS: ", row)
+                    print("ROW TYPE", type(row))
                     if rowCount > 0:
                         self.data.append(int(row[0]))
                     rowCount += 1
-        except:
+        except Exception as e:
             print('DEBUG: BadVolumes encountered error while reading from file.')
 
     def clear(self):
@@ -85,17 +87,18 @@ class BadVolumes:
     def saveToFile(self):
         try:
             badVolumesFile = os.path.splitext(self.filePath)[0] + '_badvolumes.csv'
-            with open(badVolumesFile, mode='w') as file:
+            with open(badVolumesFile, mode='w', newline = '') as file:
                 writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
                 writer.writerow(['bad_volume_num'])
 
                 for vol in self.data:
+                    print("WRITING", vol)
                     writer.writerow([vol])
 
             self.clear()
             return True
 
-        except:
+        except Exception as e:
             print('DEBUG: BadVolumes encountered error while writing to file.')
             return False
 
