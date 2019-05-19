@@ -2,7 +2,7 @@
 An easy way to explore .nii volumes and slices.
 
 - Use the file selector to quickily switch between .nii files:
-![](Demo/explore_volumes.gif)
+![](Demo/browse_files.gif)
 
 - Use the volume and slice sliders to explore the volumes and slices:
 ![](Demo/explore_volumes.gif)
