@@ -346,7 +346,6 @@ class Controller(QMainWindow):
 
         return ticks
 
-
     def getCurrentVolumeExclusionState(self):
         """Returns true if the current volume is in exclusion list"""
         if self.volumeNum in self.badVolumes.data:
