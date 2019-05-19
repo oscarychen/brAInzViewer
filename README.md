@@ -13,7 +13,7 @@ An easy way to explore .nii volumes and slices.
 Our built-in analyzer uses advanced A.I. algorithm to estimate the amount of damage induced by moving subjects during the scan.
 
 - Flag the volumes you would like to exclude and export a new file:
-![](Demo/explore_volumes.gif)
+![](Demo/export.gif)
 
 - Video demo:
 https://youtu.be/HMPbxrktTrA
