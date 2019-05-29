@@ -122,9 +122,10 @@ class LabelData:
         """Print content to console for debug"""
         print('Printing label data content for current file:')
         for key, val in self.labelData.items():
-            print(f'=> {key}')
+            # print(f'=> {key}')
             for label, labelVal in self.labelData[key].items():
-                print(f'===========> {label}:{labelVal}')
+                # print(f'===========> {label}:{labelVal}')
+                pass
 
     def readFromFile(self):
         try:
