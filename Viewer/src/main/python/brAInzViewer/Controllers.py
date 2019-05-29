@@ -23,7 +23,7 @@ class Controller(QMainWindow):
         upperRange = 128 + halfWidth
         self.detectSliceRange = (lowerRange, upperRange)
         self.detectResizeDimension = (128, 128)
-        self.detectorModelPath = 'models/model_v3.h5'
+        self.detectorModelPath = '../../resources/model_v3.h5'
         self.motionDetector = MotionDetector()
         self.volumeWithLabelsList = list()  # A list of volumes with labels
 

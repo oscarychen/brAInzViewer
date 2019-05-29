@@ -1,1 +1,2 @@
-Viewer/models/*.h5 filter=lfs diff=lfs merge=lfs -text
+CNN/models/*.h5 filter=lfs diff=lfs merge=lfs -text
+Viewer/src/main/resources/*.h5 filter=lfs diff=lfs merge=lfs -text
