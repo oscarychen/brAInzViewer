@@ -1,6 +1,7 @@
 Keras==2.2.4
 nibabel==2.4.1
-numpy==1.14.0
+numpy==1.16.4
+matplotlib==3.0.3
 opencv-python==4.1.0.25
 PyInstaller==3.4
 PyQt5==5.9.2
