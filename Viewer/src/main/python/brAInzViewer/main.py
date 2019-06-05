@@ -1,20 +1,23 @@
-from fbs_runtime.application_context import ApplicationContext
+from fbs_runtime.application_context import ApplicationContext, cached_property
 from PyQt5.QtWidgets import QMainWindow
 
-from Controllers import Controller
+from code.Controllers import Controller
 
 import sys
 
 class AppContext(ApplicationContext):           # 1. Subclass ApplicationContext
-    def run(self):                              # 2. Implement run()
-        window = Controller()
-        version = self.build_settings['version']
-        # window.setWindowTitle("brAInz v" + version)
-        # window.resize(250, 150)
-        # window.show()
-        return self.app.exec_()                 # 3. End run() with this line
+    
+    def __init__(self, *args, **kwargs):
+        super(AppContext, self).__init__(*args, **kwargs)
+
+        self.window = Controller(self)
+
+    def run(self):
+        # self.window.show()
+        return self.app.exec_()
+
 
 if __name__ == '__main__':
-    appctxt = AppContext()                      # 4. Instantiate the subclass
-    exit_code = appctxt.run()                   # 5. Invoke run()
+    appctxt = AppContext()
+    exit_code = appctxt.run()
     sys.exit(exit_code)

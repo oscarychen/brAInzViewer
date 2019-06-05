@@ -1,6 +1,6 @@
-from Views import *
-from Models import LabelData, LabelTypes, BadVolumes
-from MachineLearning import MotionDetector
+from code.Views import *
+from code.Models import LabelData, LabelTypes, BadVolumes
+from code.MachineLearning import MotionDetector
 from PyQt5.QtWidgets import QWidget, QMainWindow
 from keras.models import load_model
 import nibabel as nib
