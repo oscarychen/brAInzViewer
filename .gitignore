@@ -8,7 +8,9 @@
 *.nii
 *.bvec
 *.bval
-*.txt
+b2000/
+Calgary_PS_DTI_Dataset/
+
 
 # Pycharm project configuration
 *.idea/

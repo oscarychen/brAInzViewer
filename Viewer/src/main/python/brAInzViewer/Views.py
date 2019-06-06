@@ -243,7 +243,7 @@ class VolumeSelectView(QWidget):
 
     def updateView(self, sliderValue, fileLabel):
         self.fileLabel.setText(fileLabel)
-        self.volumeLabel.setText(f'Volume: {sliderValue + 1}')
+        self.volumeLabel.setText('Volume:' + str(sliderValue + 1))
         self.slider.setValue(sliderValue)
         self.updateSliderTicks()
 
@@ -339,7 +339,7 @@ class DisplayBrightnessSelectorView(QWidget):
 
     def updateLabel(self):
         # print(f'Voxel sliders: {self.minDisplayVox}, {self.maxDisplayVox}')
-        self.label.setText(f'Voxel Brightness Range:({self.minDisplayVox},{self.maxDisplayVox})')
+        self.label.setText('Voxel Brightness Range:('+ str(self.minDisplayVox) + ',' + str(self.maxDisplayVox) +')')
 
     @pyqtSlot(int)
     def handleStartSliderValueChange(self, value):
@@ -439,7 +439,7 @@ class SliceView(QWidget):
         self.slider.setMaximum(value)
 
     def setSliceLabel(self, sliceNumber):
-        self.sliceNumberLabel.setText(f'Slice: {sliceNumber + 1}')
+        self.sliceNumberLabel.setText('Slice: '+ str(sliceNumber + 1))
 
     def setSliderStyle(self):
 

@@ -12,10 +12,10 @@ from PyQt5.QtCore import QThread, pyqtSignal
 
 class Controller(QMainWindow):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, ctx):
+        super(Controller, self).__init__()
+        self.ctx = ctx
         self.data = None
-
         self.detectConfidenceThreshold = 0.7
         self.detectSliceNumProportionThreshold = 0.5
         halfWidth = 50
@@ -23,7 +23,7 @@ class Controller(QMainWindow):
         upperRange = 128 + halfWidth
         self.detectSliceRange = (lowerRange, upperRange)
         self.detectResizeDimension = (128, 128)
-        self.detectorModelPath = 'models/model_v3.h5'
+        self.detectorModelPath = self.ctx.get_resource('model_v3.h5')
         self.motionDetector = MotionDetector()
         self.volumeWithLabelsList = list()  # A list of volumes with labels
 
@@ -71,7 +71,7 @@ class Controller(QMainWindow):
     def openFolder(self):
         """Gets called upon Controller initialization to prompt for directory"""
         self.rootFolder = QFileDialog.getExistingDirectory(None, caption='Select folder to open', directory='../')
-        print(f'DEBUG: opening directory: {self.rootFolder}')
+        # print(f'DEBUG: opening directory: {self.rootFolder}')
         if self.rootFolder:
             self.niiPaths = self.getNiiFilePaths(self.rootFolder)
             if len(self.niiPaths) == 0:
@@ -81,7 +81,7 @@ class Controller(QMainWindow):
                 # print("No Nii Files Found")
                 exit(0)
             self.fileSelected = self.niiPaths[0]
-            print(f'DEBUG: File selected: {self.fileSelected}')
+            # print(f'DEBUG: File selected: {self.fileSelected}')
             nii = nib.load(self.fileSelected)
             self.data = nii.get_fdata()
         else:
@@ -130,9 +130,7 @@ class Controller(QMainWindow):
             saveSuccess = self.labelData.saveToFile() and self.badVolumes.saveToFile()
             if saveSuccess is False:  # Unsuccesful writing label data to file
                 w = QWidget()
-                QMessageBox.warning(w, 'Warning', 'Error encountered while saving files related to ' +
-                                    f'file {self.fileSelected}. ' +
-                                    'Please make sure you have write permission to the directories.')
+                QMessageBox.warning(w, 'Warning', 'Error encountered while saving files')
                 w.show()
             else:  # Succesfully wrote label data to file, load next file
                 self.loadNewFile(file)
@@ -178,7 +176,7 @@ class Controller(QMainWindow):
 
         self.volumeSelectView.updateSliderTicks()
 
-        print(f'BadVolumes: {self.badVolumes.data}')
+        # print(f'BadVolumes: {self.badVolumes.data}')
 
     def getExcludedVolumeList(self):
         return self.badVolumes.data
@@ -359,19 +357,19 @@ class Controller(QMainWindow):
         return self.volumeWithLabelsList
 
     def saveNillFile(self):
-
+        """Exports a new nii file"""
         if self.exportRootFolder is None:
             self.setExportDirectory()
 
         relPath = os.path.relpath(self.fileSelected, self.rootFolder)
         exportPath = os.path.join(self.exportRootFolder, relPath)
-        print(f'DEUBG: exportPath={exportPath}')
+        # print(f'DEUBG: exportPath={exportPath}')
 
         os.makedirs(os.path.dirname(exportPath), exist_ok=True)
 
         badVolumes = self.badVolumes.data
 
-        print(f'DEBUG: badVolumes={badVolumes}')
+        # print(f'DEBUG: badVolumes={badVolumes}')
 
         goodVolumes = [vol for vol in range(self.data.shape[3]) if vol not in badVolumes]
 
@@ -380,6 +378,13 @@ class Controller(QMainWindow):
         header = self.nii.header
         newNii = nib.Nifti1Image(newData, affine, header)
         newNii.to_filename(exportPath)
+        self.saveAuxFiles(exportPath)
+
+    def saveAuxFiles(self, niiPath):
+        """Exports aux files, such as b matrix files"""
+        print(f'DEBUG: saveAuxFiles called with ouput niipath= {niiPath}, input niipath={self.fileSelected}')
+
+        pass
 
     def setExportDirectory(self):
         self.exportRootFolder = QFileDialog.getExistingDirectory(None, caption='Select folder to export to',
