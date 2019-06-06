@@ -8,6 +8,7 @@ import os
 import numpy as np
 from PyQt5.QtWidgets import QFileDialog, QMessageBox, QProgressDialog
 from PyQt5.QtCore import QThread, pyqtSignal
+import csv
 
 
 class Controller(QMainWindow):
@@ -382,9 +383,26 @@ class Controller(QMainWindow):
 
     def saveAuxFiles(self, niiPath):
         """Exports aux files, such as b matrix files"""
-        print(f'DEBUG: saveAuxFiles called with ouput niipath= {niiPath}, input niipath={self.fileSelected}')
+    
+        sourcePath = os.path.splitext(self.fileSelected)[0]
+        destinationPath = os.path.splitext(niiPath)[0]
 
-        pass
+        # print(f'DEBUG: saveAuxFiles called: sourcePath= {sourcePath}, destinationPath={destinationPath}')
+
+        bvecData = self.readDataToArray(sourcePath + '.bvec')
+        bvalData = self.readDataToArray(sourcePath + '.bval')
+
+        print(bvalData)
+
+    def readDataToArray(self, filePath):
+        with open(filePath) as file:
+            data = list(csv.reader(file))
+        return data
+
+    def computeBMatrix(self, bvec, bval):
+        bmatrix = None
+        return bmatrix
+
 
     def setExportDirectory(self):
         self.exportRootFolder = QFileDialog.getExistingDirectory(None, caption='Select folder to export to',
