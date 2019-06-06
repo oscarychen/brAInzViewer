@@ -23,7 +23,7 @@ https://youtu.be/HMPbxrktTrA
 - Windows: Link coming soon
 - Linux: Link coming soon
 
-# To build from source
+# To run/build from source
 - Install all required dependencies from the requirements.txt:
 	```
 	pip install -r requirements.txt
@@ -31,6 +31,10 @@ https://youtu.be/HMPbxrktTrA
 - Navigate to the Viewer folder:
 	```
 	cd Viewer
+	```
+- Run from source:
+        ```
+	fbs run
 	```
 - Freeze code:
 	```
