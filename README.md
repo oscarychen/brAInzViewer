@@ -37,6 +37,6 @@ https://youtu.be/HMPbxrktTrA
 	fbs freeze
 	```
 - Compile installer:
-	'''
+	```
 	fbs installer
-	'''
+	```
