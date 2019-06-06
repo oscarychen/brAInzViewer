@@ -33,7 +33,7 @@ https://youtu.be/HMPbxrktTrA
 	cd Viewer
 	```
 - Run from source:
-        ```
+	```
 	fbs run
 	```
 - Freeze code:
