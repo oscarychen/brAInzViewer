@@ -405,14 +405,17 @@ class Controller(QMainWindow):
         np.savetxt(destinationPath + '.bvec', bvec, fmt='%.6f', delimiter=' ', newline='\n', encoding='utf-8')
 
         with open(destinationPath + '.bval', 'w', encoding='utf-8') as f:
-            for elem in bval:
-                f.write('{:.0f}'.format(elem) + ' ')
-            f.write('\n')
+            for index, elem in enumerate(bval):
+                f.write('{:.0f}'.format(elem))
+                if index < len(bval)-1:
+                    f.write(' ')
 
         with open(destinationPath + '.txt', 'w', encoding='utf-8') as f:
             for row in bmatrix:
-                for elem in row:
-                    f.write('{:12.8f}'.format(elem) + '\t')
+                for index, elem in enumerate(row):
+                    f.write('{:12.8f}'.format(elem))
+                    if index < len(row)-1:
+                        f.write('\t')
                 f.write('\n')
 
     def computeBMatrix(self, bvec, bval):
