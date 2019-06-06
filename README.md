@@ -17,3 +17,26 @@ Our built-in analyzer uses advanced A.I. algorithm to estimate the amount of dam
 
 - Video demo:
 https://youtu.be/HMPbxrktTrA
+
+# Download Installers
+- OS X: Link coming soon
+- Windows: Link coming soon
+- Linux: Link coming soon
+
+# To build from source
+- Install all required dependencies from the requirements.txt:
+	'''
+	pip install -r requirements.txt
+	'''
+- Navigate to the Viewer folder:
+	'''
+	cd Viewer
+	'''
+- Freeze code:
+	'''
+	fbs freeze
+	'''
+- Compile installer:
+	'''
+	fbs installer
+	'''
