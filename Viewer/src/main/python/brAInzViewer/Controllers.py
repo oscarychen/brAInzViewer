@@ -83,8 +83,13 @@ class Controller(QMainWindow):
                 exit(0)
             self.fileSelected = self.niiPaths[0]
             # print(f'DEBUG: File selected: {self.fileSelected}')
-            nii = nib.load(self.fileSelected)
-            self.data = nii.get_fdata()
+            try: 
+                nii = nib.load(self.fileSelected)
+                self.data = nii.get_fdata()
+            except:
+                w = QWidget()
+                QMessageBox.warning(w, "Error", f"Failed to open .nii file: {self.fileSelected}")
+                w.show()
         else:
             exit(0)
 
@@ -379,28 +384,51 @@ class Controller(QMainWindow):
         header = self.nii.header
         newNii = nib.Nifti1Image(newData, affine, header)
         newNii.to_filename(exportPath)
-        self.saveAuxFiles(exportPath)
+        self.saveAuxFiles(exportPath, goodVolumes)
 
-    def saveAuxFiles(self, niiPath):
-        """Exports aux files, such as b matrix files"""
+    def saveAuxFiles(self, niiPath, goodVolumes):
+        """Exports aux files, such as b matrix file"""
     
         sourcePath = os.path.splitext(self.fileSelected)[0]
         destinationPath = os.path.splitext(niiPath)[0]
 
         # print(f'DEBUG: saveAuxFiles called: sourcePath= {sourcePath}, destinationPath={destinationPath}')
 
-        bvecData = self.readDataToArray(sourcePath + '.bvec')
-        bvalData = self.readDataToArray(sourcePath + '.bval')
+        bvec = np.loadtxt(sourcePath + '.bvec', dtype=float, delimiter=' ')
+        bval = np.loadtxt(sourcePath + '.bval', dtype=float, delimiter=' ')
 
-        print(bvalData)
+        bvec = bvec[goodVolumes, ...]
+        bval =bval[goodVolumes, ...]
 
-    def readDataToArray(self, filePath):
-        with open(filePath) as file:
-            data = list(csv.reader(file))
-        return data
+        bmatrix = self.computeBMatrix(bvec, bval)
+
+        np.savetxt(destinationPath + '.bvec', bvec, fmt='%.6f', delimiter=' ', newline='\n', encoding='utf-8')
+
+        with open(destinationPath + '.bval', 'w', encoding='utf-8') as f:
+            for elem in bval:
+                f.write('{:.0f}'.format(elem) + ' ')
+            f.write('\n')
+
+        with open(destinationPath + '.txt', 'w', encoding='utf-8') as f:
+            for row in bmatrix:
+                for elem in row:
+                    f.write('{:12.8f}'.format(elem) + '\t')
+                f.write('\n')
 
     def computeBMatrix(self, bvec, bval):
-        bmatrix = None
+        X = np.zeros([bval.shape[0], 6])
+        for i in range(0, 6):
+            X[:,i] = bval
+        Y = np.zeros([bvec.shape[0], 6])
+        Y[:, 0] = np.multiply(bvec[:,0],bvec[:,0])
+        Y[:, 1] = np.multiply(2*bvec[:,0], bvec[:,1])
+        Y[:, 2] = np.multiply(2*bvec[:,0], bvec[:,2])
+        Y[:, 3] = np.multiply(bvec[:,1], bvec[:,1])
+        Y[:, 4] = np.multiply(2*bvec[:,1], bvec[:,2])
+        Y[:, 5] = np.multiply(bvec[:,2], bvec[:,2])
+
+        bmatrix = np.multiply(X, Y)
+
         return bmatrix
 
 
