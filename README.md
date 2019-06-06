@@ -25,17 +25,17 @@ https://youtu.be/HMPbxrktTrA
 
 # To build from source
 - Install all required dependencies from the requirements.txt:
-	'''
+	```
 	pip install -r requirements.txt
-	'''
+	```
 - Navigate to the Viewer folder:
-	'''
+	```
 	cd Viewer
-	'''
+	```
 - Freeze code:
-	'''
+	```
 	fbs freeze
-	'''
+	```
 - Compile installer:
 	'''
 	fbs installer
