@@ -357,7 +357,7 @@ class Controller(QMainWindow):
         return self.volumeWithLabelsList
 
     def saveNillFile(self):
-
+        """Exports a new nii file"""
         if self.exportRootFolder is None:
             self.setExportDirectory()
 
@@ -378,6 +378,13 @@ class Controller(QMainWindow):
         header = self.nii.header
         newNii = nib.Nifti1Image(newData, affine, header)
         newNii.to_filename(exportPath)
+        self.saveAuxFiles(exportPath)
+
+    def saveAuxFiles(self, niiPath):
+        """Exports aux files, such as b matrix files"""
+        print(f'DEBUG: saveAuxFiles called with ouput niipath= {niiPath}, input niipath={self.fileSelected}')
+
+        pass
 
     def setExportDirectory(self):
         self.exportRootFolder = QFileDialog.getExistingDirectory(None, caption='Select folder to export to',
