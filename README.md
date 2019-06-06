@@ -19,7 +19,7 @@ Our built-in analyzer uses advanced A.I. algorithm to estimate the amount of dam
 https://youtu.be/HMPbxrktTrA
 
 # Download Installers
-- OS X: ![download](https://drive.google.com/file/d/1v6TZJHUCbZFDeAg8_MgzdRlFzSJmXwF3/view?usp=sharing)
+- OS X: [download](https://drive.google.com/file/d/1v6TZJHUCbZFDeAg8_MgzdRlFzSJmXwF3/view?usp=sharing)
 - Windows: Link coming soon
 - Linux: Link coming soon
 
