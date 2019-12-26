@@ -1,10 +1,14 @@
+'''
+Pulls the maximum value of each volume for each nii file and puts it into the
+maxVals.pickle file
+'''
+from Utils import formatScanName
 import os
 import nibabel as nib
 import numpy as np
 import pickle
 
-#folders = ["..\\Calgary_PS_DTI_Dataset\\", "..\\b2000\\"]
-folders = ["../Calgary_PS_DTI_Dataset/"]
+folders = ["../Data/CombinedData"]
 niiFiles = list()
 sNames = dict()
 for folder in folders:
@@ -13,11 +17,7 @@ for folder in folders:
             if file.endswith('.nii'):
                 filePath = os.path.join(dirpaths, file)
                 niiFiles.append(filePath)
-                sEnd = file.rfind('_')
-                if sEnd == -1:
-                    sEnd = len(file)-4
-                sName = file[0:sEnd]
-                sNames[filePath] = sName
+                sNames[filePath] = formatScanName(file)
             
 maxVals = dict()
 count = 0
@@ -27,9 +27,10 @@ for file in niiFiles:
     print(file, sName, count)
     nii = nib.load(file)
     data = nii.get_fdata()
-    for vol in range(35):
+    for vol in range(data.shape[3]):
         maxVal = np.max(data[:,:,:,vol])
         maxVals[sName, vol] = maxVal
 #%%
-with open('maxVals.pickle', 'wb+') as f:
+with open('Inputs/maxVals.pickle', 'wb+') as f:
     pickle.dump(maxVals, f)
+print("Complete")
