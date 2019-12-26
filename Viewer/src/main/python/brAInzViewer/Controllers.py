@@ -6,10 +6,11 @@ from keras.models import load_model
 import nibabel as nib
 import os
 import numpy as np
-from PyQt5.QtWidgets import QFileDialog, QMessageBox, QProgressDialog
+from PyQt5.QtWidgets import QFileDialog, QMessageBox, QProgressDialog, QInputDialog, QLineEdit
 from PyQt5.QtCore import QThread, pyqtSignal
 import csv
 
+import time
 
 class Controller(QMainWindow):
 
@@ -126,6 +127,8 @@ class Controller(QMainWindow):
 
     def changeFile(self, file):
         """Gets called by the FileListView when a file selection is changed"""
+        print(file)
+
         self.volumeWithLabelsList.clear()
 
         if self.labelData.changed is False and self.badVolumes.changed is False:  # no need to save changes to file
@@ -135,10 +138,12 @@ class Controller(QMainWindow):
             # save labels to csv file before switching file
             saveSuccess = self.labelData.saveToFile() and self.badVolumes.saveToFile()
             if saveSuccess is False:  # Unsuccesful writing label data to file
+                print("Failed to write label data to file.")
                 w = QWidget()
                 QMessageBox.warning(w, 'Warning', 'Error encountered while saving files')
                 w.show()
             else:  # Succesfully wrote label data to file, load next file
+                print("label data saved.")
                 self.loadNewFile(file)
 
     def loadNewFile(self, file):
@@ -394,29 +399,40 @@ class Controller(QMainWindow):
 
         # print(f'DEBUG: saveAuxFiles called: sourcePath= {sourcePath}, destinationPath={destinationPath}')
 
-        bvec = np.loadtxt(sourcePath + '.bvec', dtype=float, delimiter=' ')
-        bval = np.loadtxt(sourcePath + '.bval', dtype=float, delimiter=' ')
+        try: 
+            bvec = np.loadtxt(sourcePath + '.bvec', dtype=float, delimiter=' ')
+            bvec = bvec[goodVolumes, ...]
+        except:
+            bvec = None
 
-        bvec = bvec[goodVolumes, ...]
-        bval =bval[goodVolumes, ...]
+        try:
+            bval = np.loadtxt(sourcePath + '.bval', dtype=float, delimiter=' ')
+            bval =bval[goodVolumes, ...]
+        except:
+            bval = None
 
-        bmatrix = self.computeBMatrix(bvec, bval)
+        if bvec is not None and bval is not None:
+            bmatrix = self.computeBMatrix(bvec, bval)
 
-        np.savetxt(destinationPath + '.bvec', bvec, fmt='%.6f', delimiter=' ', newline='\n', encoding='utf-8')
+            with open(destinationPath + '.txt', 'w', encoding='utf-8') as f:
+                for row in bmatrix:
+                    for index, elem in enumerate(row):
+                        f.write('{:12.8f}'.format(elem))
+                        if index < len(row)-1:
+                            f.write('\t')
+                    f.write('\n')
 
-        with open(destinationPath + '.bval', 'w', encoding='utf-8') as f:
-            for index, elem in enumerate(bval):
-                f.write('{:.0f}'.format(elem))
-                if index < len(bval)-1:
-                    f.write(' ')
+        if bvec is not None: 
+            np.savetxt(destinationPath + '.bvec', bvec, fmt='%.6f', delimiter=' ', newline='\n', encoding='utf-8')
 
-        with open(destinationPath + '.txt', 'w', encoding='utf-8') as f:
-            for row in bmatrix:
-                for index, elem in enumerate(row):
-                    f.write('{:12.8f}'.format(elem))
-                    if index < len(row)-1:
-                        f.write('\t')
-                f.write('\n')
+        if bval is not None:
+            with open(destinationPath + '.bval', 'w', encoding='utf-8') as f:
+                for index, elem in enumerate(bval):
+                    f.write('{:.0f}'.format(elem))
+                    if index < len(bval)-1:
+                        f.write(' ')
+
+        
 
     def computeBMatrix(self, bvec, bval):
         X = np.zeros([bval.shape[0], 6])
@@ -439,44 +455,73 @@ class Controller(QMainWindow):
         self.exportRootFolder = QFileDialog.getExistingDirectory(None, caption='Select folder to export to',
                                                                  directory='../')
 
-    def loadPredictionModel(self):
+    def loadPredictionModel(self, *args, **kwargs):
+        if 'batch' in kwargs:
+            batch = kwargs['batch']
+        else:
+            batch = False
         try:
             self.thread = LoadModel(self.motionDetector, self.detectorModelPath, self.detectSliceRange,
-                                    self.detectResizeDimension)
+                                    self.detectResizeDimension, batch)
             self.thread.results.connect(self.runDetection)
             self.thread.start()
         except:
             print('DEBUG: Failed to load model')
 
-    def detectBadVolumes(self):
+    def detectBadVolumes(self, *args, **kwargs):
         """Runs the bad volume detector on the current file"""
-        self.fileListView.lockView(True)
-        self.progress = QProgressDialog()
-        self.progress.setWindowTitle("Detection")
-        self.progress.setLabelText("Loading Model...")
-        self.progress.setRange(0, self.data.shape[3])
-        self.progress.setValue(0)
-        # self.progress.setCancelButtonText("Close")
-        # self.progress.canceled.connect(self.progress.close)
-        self.progress.setAutoClose(True)
-        self.progress.setCancelButton(None)
-        # self.progress.setWindowFlags(Qt.FramelessWindowHint)
-        self.progress.show()
+
+        if 'batch' in kwargs:
+            batch = kwargs['batch']
+        else:
+            batch = False
+
+        if batch:
+            threshold, okPressed = QInputDialog.getDouble(self, "Scanning all files","Confidence threshold (volumes that score higher than this threshold in the motion detector will be automatically removed):", 0.90, 0, 0.99, 2)
+
+            if self.exportRootFolder is None:
+                self.setExportDirectory()
+
+        if (not batch) or okPressed:
+
+            self.fileListView.lockView(True)
+            self.progress = QProgressDialog()
+            self.progress.setWindowTitle("Detection")
+            self.progress.setLabelText("Loading Model...")
+            self.progress.setRange(0, self.data.shape[3])
+            self.progress.setValue(0)
+            # self.progress.setCancelButtonText("Close")
+            # self.progress.canceled.connect(self.progress.close)
+            self.progress.setAutoClose(True)
+            self.progress.setCancelButton(None)
+            # self.progress.setWindowFlags(Qt.FramelessWindowHint)
+            self.progress.show()
 
         if self.motionDetector.model is None:
-            self.loadPredictionModel()
+            
+            self.loadPredictionModel(*args, **kwargs)
         else:
-            self.runDetection()
+            self.runDetection(*args, **kwargs)
 
-    def runDetection(self):
+
+    def runDetection(self, *args, **kwargs):
+      
         print("\nStarting predictions...")
         self.progress.setLabelText("Detecting Motion...")
         self.predictions = []
         self.thread = RunModel(self.data, self.motionDetector)
-        self.thread.results.connect(self.updateDetectionResults)
+
+        # batch flag is passed either in args or kwargs (don't ask me)
+        if args:
+            batch=args[0]
+        if ('batch' in kwargs and kwargs['batch']) or batch:
+            self.thread.results.connect(self.updateDetectionResultsThenRunNext)
+        else:
+            self.thread.results.connect(self.updateDetectionResults)
+
         self.thread.start()
 
-    def processPredictions(self):
+    def processPredictions(self, *args, **kwargs):
         self.volumeWithLabelsList.clear()
         self.mainWindow.setStatusMessage('Running detection model. Please wait...')
         numVols = self.data.shape[3]
@@ -509,9 +554,22 @@ class Controller(QMainWindow):
                 badVolCount += 1
             else:
                 self.volumeWithLabelsList.append(' ')  # Good volume ticker
-        self.mainWindow.setStatusMessage('Detection complete. Potential volumes with motion: {}'.format(badVolCount))
-        self.volumeSelectView.updateSliderTicks()
-        self.fileListView.lockView(False)
+
+        if 'batch' in kwargs and 'fileIndex' in kwargs:
+
+            batch = kwargs['batch']
+            nextFileIndex = kwargs['fileIndex'] + 1
+
+            if batch and nextFileIndex < len(self.niiPaths):
+                self.saveNillFile()
+                self.changeFile(self.niiPaths[nextFileIndex])
+                self.runDetection(batch=True)
+
+        else:
+
+            self.mainWindow.setStatusMessage('Detection complete. Potential volumes with motion: {}'.format(badVolCount))
+            self.volumeSelectView.updateSliderTicks()
+            self.fileListView.lockView(False)
 
     def updateDetectionResults(self, prediction):
         self.predictions.append(prediction)
@@ -520,21 +578,32 @@ class Controller(QMainWindow):
         if len(self.predictions) == self.data.shape[3]:
             self.processPredictions()
 
+    def updateDetectionResultsThenRunNext(self, prediction):
+        index = self.niiPaths.index(self.fileSelected)
+
+        self.predictions.append(prediction)
+        self.progress.setValue(len(self.predictions))
+        self.mainWindow.setStatusMessage('Detecting on volume {}'.format(len(self.predictions)))
+        if len(self.predictions) == self.data.shape[3]:
+            self.processPredictions(batch=True, fileIndex=index)
+
+
 
 class LoadModel(QThread):
-    results = pyqtSignal()
+    results = pyqtSignal(object)
 
-    def __init__(self, motionDetector, detectorModelPath, detectSliceRange, detectResizeDimension):
+    def __init__(self, motionDetector, detectorModelPath, detectSliceRange, detectResizeDimension, startBatch):
         QThread.__init__(self)
         self.motionDetector = motionDetector
         self.detectorModelPath = detectorModelPath
         self.detectSliceRange = detectSliceRange
         self.detectResizeDimension = detectResizeDimension
+        self.startBatch = startBatch
 
     def loadModel(self):
         # model = load_model(self.detectorModelPath)
         self.motionDetector.setModel(self.detectorModelPath, self.detectSliceRange, self.detectResizeDimension)
-        self.results.emit()
+        self.results.emit(self.startBatch==True)
 
     def run(self):
         self.loadModel()

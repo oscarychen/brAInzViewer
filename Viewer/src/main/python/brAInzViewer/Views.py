@@ -25,9 +25,9 @@ class View(QMainWindow):
         mainMenu.setNativeMenuBar(False)  # Needed for Mac OS
         fileMenu = mainMenu.addMenu('Options')
 
-        analyzeButton = QAction('Analyze Volumes', self)
-        analyzeButton.triggered.connect(self.analyzeButtonPressed)
-        fileMenu.addAction(analyzeButton)
+        analyzeAllButton = QAction('Analyze All Files', self)
+        analyzeAllButton.triggered.connect(self.analyzeAllButtonPressed)
+        fileMenu.addAction(analyzeAllButton)
 
         saveFileButton = QAction('Save to File', self)
         saveFileButton.triggered.connect(self.saveFileButtonPressed)
@@ -47,8 +47,8 @@ class View(QMainWindow):
     def saveFileButtonPressed(self):
         self.controller.saveNillFile()
 
-    def analyzeButtonPressed(self):
-        self.controller.detectBadVolumes()
+    def analyzeAllButtonPressed(self):
+        self.controller.detectBadVolumes(batch=True)
 
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
         """Triggered when the window is being closed"""

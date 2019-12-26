@@ -1,4 +1,4 @@
-from fbs_runtime.application_context import ApplicationContext, cached_property
+from fbs_runtime.application_context.PyQt5 import ApplicationContext, cached_property
 from PyQt5.QtWidgets import QMainWindow
 import sys
 import os
