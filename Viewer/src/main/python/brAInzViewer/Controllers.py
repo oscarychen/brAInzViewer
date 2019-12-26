@@ -370,7 +370,7 @@ class Controller(QMainWindow):
 
     def saveNillFile(self):
         """Exports a new nii file"""
-        if self.exportRootFolder is None or self.exportRootFolder == '':
+        if self.exportRootFolder == None or self.exportRootFolder == '':
             self.setExportDirectory()
         if self.exportRootFolder == '': # canceled
             return
@@ -455,8 +455,14 @@ class Controller(QMainWindow):
 
 
     def setExportDirectory(self):
-        self.exportRootFolder = QFileDialog.getExistingDirectory(None, caption='Select folder to export to',
-                                                                 directory='../')
+
+        okPressed = QMessageBox.question(self, 'Export destination','Select an export directory.', QMessageBox.Ok)
+
+        if okPressed:
+            self.showExportDirSelector()
+
+    def showExportDirSelector(self):
+        self.exportRootFolder = QFileDialog.getExistingDirectory(None,directory='../')
 
     def loadPredictionModel(self, *args, **kwargs):
         if 'batch' in kwargs:
@@ -480,15 +486,18 @@ class Controller(QMainWindow):
             batch = False
 
         if batch:
-            self.autoRemoveThreshold, okPressed = QInputDialog.getDouble(self, "Scanning all files","Confidence threshold (volumes that score higher than this threshold in the motion detector will be automatically removed):", 0.90, 0, 0.99, 2)
-
-            if not okPressed: # canceled
-                return
 
             if self.exportRootFolder is None or self.exportRootFolder == '':
                 self.setExportDirectory()
             if self.exportRootFolder == '': # canceled
                 return
+
+            self.autoRemoveThreshold, okPressed = QInputDialog.getDouble(self, "Scanning all files","Confidence threshold (volumes that score higher than this threshold in the motion detector will be automatically removed):", 0.90, 0, 0.99, 2)
+
+            if not okPressed: # canceled
+                return
+
+
 
         if (not batch) or okPressed:
 
