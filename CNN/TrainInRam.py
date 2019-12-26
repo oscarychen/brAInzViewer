@@ -1,5 +1,5 @@
 '''
-Loads datasets to RAM instead of using generating data batches on the fly
+Loads datasets to RAM instead of generating data batches on the fly
 '''
 import numpy as np
 import time
@@ -12,7 +12,7 @@ from keras.callbacks import TensorBoard
 
 #%%
 print("Loading data...")
-prefix = "DataArrays/under400_2/"
+prefix = "DataArrays/400000/"
 X_train = np.load(prefix + "dataxtrain.npy")
 X_test = np.load(prefix + "dataxtest.npy")
 y_train = np.load(prefix + "dataytrain.npy")
@@ -25,11 +25,11 @@ print("Loaded")
 
 batchSize = 32
 numGroups = 4
-dropout1 = 0.9
+dropout1 = 0.7
 dropout2 = 0.7
 comment="SF"
 # Design model
-layer_size = 64
+layer_size = 96
 
 NAME = 'n{}_b{}_da{}_db{}_i{}_{}_{}'.format(numGroups,batchSize,int(dropout1*100), int(dropout2*100), layer_size, comment, int(time.time()))  # model name with timestamp
 print(NAME)

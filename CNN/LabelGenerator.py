@@ -1,11 +1,17 @@
+'''
+Creates a label for slices of each volume of each nii file in the data folder
+'''
 import os
 import pickle
+import nibabel as nib
+from Utils import formatScanName
 
-class LabelGenerator:
-    
+
+class LabelGenerator:    
     def __init__(self):
-        self.folder = "../Calgary_PS_DTI_Dataset/"
-        self.labelfname = "Bad750Volumes.csv"
+        self.folder = "../Data/CombinedData/"
+        self.labelPath = "Inputs/BadVolumes.csv"
+        self.maxValPath = "Inputs/maxVals.pickle"
         self.sliceStart = 96
         self.sliceEnd = 160
         self.niiFiles = list()
@@ -21,16 +27,12 @@ class LabelGenerator:
                 if file.endswith('.nii'):
                     filePath = os.path.join(dirpaths, file)
                     self.niiFiles.append(filePath)
-                    sEnd = file.rfind('_')
-                    if sEnd == -1:
-                        sEnd = len(file)-4
-                    sName = file[0:sEnd]
-                    self.sNames[filePath] = sName
+                    self.sNames[filePath] = formatScanName(file)
 
         #dict of bad volumes based on scan name
         print("Getting bad volumes from csv")
         badVols = dict()
-        with open(self.labelfname) as f:
+        with open(self.labelPath) as f:
             lines = f.readlines()
             for i in range(1, len(lines)):
                 line = lines[i].split(',')
@@ -38,7 +40,7 @@ class LabelGenerator:
                 vols = vols.split(';')
                 #subtract one for 0 indexing
                 vols = [int(vol)-1 for vol in vols if vol != '']
-                sName = line[0].upper().strip().replace('-','')
+                sName = formatScanName(line[0])
                 badVols[sName] = vols
 
         print("Generating slice ids and labels")
@@ -46,7 +48,8 @@ class LabelGenerator:
         
         for file in self.niiFiles:
             sName = self.sNames[file]
-            for volNum in range(35):
+            nii = nib.load(file)
+            for volNum in range(nii.shape[3]):
                 label = 0
                 if sName in badVols:
                     if volNum in badVols[sName]:
@@ -64,10 +67,12 @@ class LabelGenerator:
 
         print("Getting max values from pickle file")
         
-        with open ("maxVals.pickle", "rb") as f:
+        with open (self.maxValPath, "rb") as f:
             self.maxVals = pickle.load(f)
         for file in self.niiFiles:
-            for vol in range(35):
+            nii = nib.load(file)
+            for vol in range(nii.shape[3]):
+                ##max vals pickle file takes sname, vol. data gen takes filepath, vol
                 self.maxVals[file, vol] = self.maxVals.pop((self.sNames[file], vol))
         print("Done")
 

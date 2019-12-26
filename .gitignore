@@ -10,7 +10,11 @@
 *.bval
 b2000/
 Calgary_PS_DTI_Dataset/
+/Data
 
+# Ignore inputs for training
+CNN/Inputs/badVolumes.csv
+CNN/Inputs/maxVals.pickle
 
 # Pycharm project configuration
 *.idea/

@@ -20,7 +20,7 @@ def calcScores(y, pred):
 
 #%%
 print("Loading data...")
-prefix = "DataArrays/under400_2/"
+prefix = "DataArrays/400000/"
 X_train = np.load(prefix + "dataxtrain.npy")
 X_test = np.load(prefix + "dataxtest.npy")
 y_train = np.load(prefix + "dataytrain.npy")
@@ -32,13 +32,13 @@ print("Loaded")
 
 #%%
 
-model = load_model('weights/model_v3.h5')
+model = load_model('models/model_v4.h5')
 
 #%%
-print("Predicting Train...")
+print("Predicting Train Set...")
 prob_train = model.predict(X_train)
 #%%
-print("Predicting Test...")
+print("Predicting Test Set...")
 prob_test = model.predict(X_test)
 print("Done predictions")
 #%%
