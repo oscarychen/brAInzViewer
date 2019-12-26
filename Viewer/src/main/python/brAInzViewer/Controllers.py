@@ -25,7 +25,7 @@ class Controller(QMainWindow):
         upperRange = 128 + halfWidth
         self.detectSliceRange = (lowerRange, upperRange)
         self.detectResizeDimension = (128, 128)
-        self.detectorModelPath = self.ctx.get_resource('model_v3.h5')
+        self.detectorModelPath = self.ctx.get_resource('model_v4.h5')
         self.motionDetector = MotionDetector()
         self.volumeWithLabelsList = list()  # A list of volumes with labels
 
@@ -38,6 +38,7 @@ class Controller(QMainWindow):
         self.rootFolder = None
         self.openFolder()
         self.fileSelected = None
+        self.autoRemoveThreshold = 0.9
 
         self.exportRootFolder = None
 
@@ -369,8 +370,10 @@ class Controller(QMainWindow):
 
     def saveNillFile(self):
         """Exports a new nii file"""
-        if self.exportRootFolder is None:
+        if self.exportRootFolder is None or self.exportRootFolder == '':
             self.setExportDirectory()
+        if self.exportRootFolder == '': # canceled
+            return
 
         relPath = os.path.relpath(self.fileSelected, self.rootFolder)
         exportPath = os.path.join(self.exportRootFolder, relPath)
@@ -477,10 +480,15 @@ class Controller(QMainWindow):
             batch = False
 
         if batch:
-            threshold, okPressed = QInputDialog.getDouble(self, "Scanning all files","Confidence threshold (volumes that score higher than this threshold in the motion detector will be automatically removed):", 0.90, 0, 0.99, 2)
+            self.autoRemoveThreshold, okPressed = QInputDialog.getDouble(self, "Scanning all files","Confidence threshold (volumes that score higher than this threshold in the motion detector will be automatically removed):", 0.90, 0, 0.99, 2)
 
-            if self.exportRootFolder is None:
+            if not okPressed: # canceled
+                return
+
+            if self.exportRootFolder is None or self.exportRootFolder == '':
                 self.setExportDirectory()
+            if self.exportRootFolder == '': # canceled
+                return
 
         if (not batch) or okPressed:
 
@@ -561,6 +569,7 @@ class Controller(QMainWindow):
             nextFileIndex = kwargs['fileIndex'] + 1
 
             if batch and nextFileIndex < len(self.niiPaths):
+                self.autoRemoveCorruptVolumes()
                 self.saveNillFile()
                 self.changeFile(self.niiPaths[nextFileIndex])
                 self.runDetection(batch=True)
@@ -570,6 +579,10 @@ class Controller(QMainWindow):
             self.mainWindow.setStatusMessage('Detection complete. Potential volumes with motion: {}'.format(badVolCount))
             self.volumeSelectView.updateSliderTicks()
             self.fileListView.lockView(False)
+
+    def autoRemoveCorruptVolumes(self):
+        pass
+
 
     def updateDetectionResults(self, prediction):
         self.predictions.append(prediction)
