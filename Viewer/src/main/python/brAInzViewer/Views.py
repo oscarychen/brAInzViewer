@@ -367,25 +367,25 @@ class TriPlaneView(QWidget):
         super(TriPlaneView, self).__init__()
         self.controller = controller
 
-        analyzeButton = QPushButton('Analyze Volumes')
-        analyzeButton.setCheckable(False)
-        analyzeButton.setStyleSheet("color: black; background-color: rgb(150,170,200);")
-        analyzeButton.clicked.connect(self.controller.detectBadVolumes)
+        self.analyzeButton = QPushButton('Analyze Volumes')
+        self.analyzeButton.setCheckable(False)
+        self.analyzeButton.setStyleSheet("color: black; background-color: rgb(150,170,200);")
+        self.analyzeButton.clicked.connect(self.controller.detectBadVolumes)
 
         self.excludeButton = QPushButton('Exclude Volume')
         self.excludeButton.setCheckable(True)
         self.excludeButton.setStyleSheet("color: black; background-color: rgb(150,170,200);")
         self.excludeButton.clicked[bool].connect(self.controller.markVolumeForExclusion)
 
-        exportButton = QPushButton('Export')
-        exportButton.setCheckable(False)
-        exportButton.setStyleSheet("color: black; background-color: rgb(150,170,200);")
-        exportButton.clicked.connect(self.controller.saveNillFile)
+        self.exportButton = QPushButton('Export')
+        self.exportButton.setCheckable(False)
+        self.exportButton.setStyleSheet("color: black; background-color: rgb(150,170,200);")
+        self.exportButton.clicked.connect(self.controller.saveNillFile)
 
         grid = QGridLayout()
-        grid.addWidget(analyzeButton, 0, 0)
+        grid.addWidget(self.analyzeButton, 0, 0)
         grid.addWidget(self.excludeButton, 0, 1)
-        grid.addWidget(exportButton, 0, 2)
+        grid.addWidget(self.exportButton, 0, 2)
         grid.addWidget(axial, 1, 0)
         grid.addWidget(sagittal, 1, 1)
         grid.addWidget(coronal, 1, 2)
@@ -394,6 +394,16 @@ class TriPlaneView(QWidget):
 
     def updateButtonState(self, state):
         self.excludeButton.setChecked(state)
+
+    def disableButtons(self):
+        self.analyzeButton.setEnabled(False)
+        self.exportButton.setEnabled(False)
+        self.excludeButton.setEnabled(False)
+
+    def enableButtons(self):
+        self.analyzeButton.setEnabled(True)
+        self.exportButton.setEnabled(True)
+        self.excludeButton.setEnabled(True)
 
 
 class SliceView(QWidget):

@@ -493,6 +493,7 @@ class Controller(QMainWindow):
         if (not batch) or okPressed:
 
             self.fileListView.lockView(True)
+            self.triPlaneView.disableButtons()
             self.progress = QProgressDialog()
             self.progress.setWindowTitle("Detection")
             self.progress.setLabelText("Loading Model...")
@@ -574,11 +575,18 @@ class Controller(QMainWindow):
                 self.changeFile(self.niiPaths[nextFileIndex])
                 self.runDetection(batch=True)
 
-        else:
+            else:
+                self.finishProcessing('Detection complete. Potential volumes with motion: {}'.format(badVolCount))
 
-            self.mainWindow.setStatusMessage('Detection complete. Potential volumes with motion: {}'.format(badVolCount))
-            self.volumeSelectView.updateSliderTicks()
-            self.fileListView.lockView(False)
+        else: 
+            self.finishProcessing('Detection complete. Potential volumes with motion: {}'.format(badVolCount))
+        
+
+    def finishProcessing(self, msg):
+        self.mainWindow.setStatusMessage(msg)
+        self.volumeSelectView.updateSliderTicks()
+        self.fileListView.lockView(False)
+        self.triPlaneView.enableButtons()
 
     def autoRemoveCorruptVolumes(self):
         pass
