@@ -38,7 +38,7 @@ class Controller(QMainWindow):
         self.rootFolder = None
         self.openFolder()
         self.fileSelected = None
-        self.autoRemoveThreshold = 0.9
+        self.autoRemoveThreshold = 90
 
         self.exportRootFolder = None
 
@@ -128,8 +128,6 @@ class Controller(QMainWindow):
 
     def changeFile(self, file):
         """Gets called by the FileListView when a file selection is changed"""
-        print(file)
-
         self.volumeWithLabelsList.clear()
 
         if self.labelData.changed is False and self.badVolumes.changed is False:  # no need to save changes to file
@@ -492,7 +490,7 @@ class Controller(QMainWindow):
             if self.exportRootFolder == '': # canceled
                 return
 
-            self.autoRemoveThreshold, okPressed = QInputDialog.getDouble(self, "Scanning all files","Confidence threshold (volumes that score higher than this threshold in the motion detector will be automatically removed):", 0.90, 0, 0.99, 2)
+            self.autoRemoveThreshold, okPressed = QInputDialog.getDouble(self, "Scanning all files","Confidence threshold (volumes that score higher than this threshold in the motion detector will be automatically removed):", 90, 0, 99, 0)
 
             if not okPressed: # canceled
                 return
@@ -524,12 +522,12 @@ class Controller(QMainWindow):
 
     def runDetection(self, *args, **kwargs):
       
-        print("\nStarting predictions...")
-        self.progress.setLabelText("Detecting Motion...")
+        print("\nScanning...")
+        self.progress.setLabelText(self.fileSelected)
         self.predictions = []
         self.thread = RunModel(self.data, self.motionDetector)
 
-        # batch flag is passed either in args or kwargs (don't ask me)
+        # batch flag is passed either in args or kwargs (don't ask me) signal emit can't send keyword arguments
         if args:
             batch=args[0]
         if ('batch' in kwargs and kwargs['batch']) or batch:
@@ -574,12 +572,13 @@ class Controller(QMainWindow):
                 self.volumeWithLabelsList.append(' ')  # Good volume ticker
 
         if 'batch' in kwargs and 'fileIndex' in kwargs:
-
+            self.autoRemoveCorruptVolumes()
+            
             batch = kwargs['batch']
             nextFileIndex = kwargs['fileIndex'] + 1
 
+            # Set up next file
             if batch and nextFileIndex < len(self.niiPaths):
-                self.autoRemoveCorruptVolumes()
                 self.saveNillFile()
                 self.changeFile(self.niiPaths[nextFileIndex])
                 self.runDetection(batch=True)
@@ -598,13 +597,19 @@ class Controller(QMainWindow):
         self.triPlaneView.enableButtons()
 
     def autoRemoveCorruptVolumes(self):
-        pass
-
+        print("----Results----")
+        print("File " + self.fileSelected)
+        for volIndex, volScore in enumerate(self.volumeWithLabelsList):
+            if isinstance(volScore, (int, float)) and volScore >= self.autoRemoveThreshold:
+                print("bad vol" + str(volIndex) + " score=" + str(volScore))
+                
+                if volIndex not in self.badVolumes.data:
+                    self.badVolumes.append(volIndex)
 
     def updateDetectionResults(self, prediction):
         self.predictions.append(prediction)
         self.progress.setValue(len(self.predictions))
-        self.mainWindow.setStatusMessage('Detecting on volume {}'.format(len(self.predictions)))
+        self.mainWindow.setStatusMessage('Processing volume {}'.format(len(self.predictions)) + ' of {}'.format(self.fileSelected))
         if len(self.predictions) == self.data.shape[3]:
             self.processPredictions()
 
@@ -613,7 +618,7 @@ class Controller(QMainWindow):
 
         self.predictions.append(prediction)
         self.progress.setValue(len(self.predictions))
-        self.mainWindow.setStatusMessage('Detecting on volume {}'.format(len(self.predictions)))
+        self.mainWindow.setStatusMessage('Processing volume {}'.format(len(self.predictions)) + ' of {}'.format(self.fileSelected))
         if len(self.predictions) == self.data.shape[3]:
             self.processPredictions(batch=True, fileIndex=index)
 
@@ -650,7 +655,7 @@ class RunModel(QThread):
     def runModel(self):
         numVols = self.data.shape[3]
         for v in range(numVols):
-            print("Detecting slices in volume", v)
+            # print("Detecting slices in volume", v)
             volume = self.data[:, :, :, v]
             self.motionDetector.setMaxBrightness(np.amax(volume))  # Set normalization parameter
             prediction = self.motionDetector.predictVolume(volume)
