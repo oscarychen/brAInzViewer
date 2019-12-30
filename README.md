@@ -24,6 +24,7 @@ https://youtu.be/HMPbxrktTrA
 - Linux: Link coming soon
 
 # To run/build from source
+- Python 3.6 is recommended to run or build from source
 - Install all required dependencies from the requirements.txt:
 	```
 	pip install -r requirements.txt
