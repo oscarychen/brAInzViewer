@@ -29,14 +29,21 @@ Our built-in analyzer uses advanced A.I. algorithm to estimate the amount of dam
 
 - Python 3.6 is recommended to run or build from source
 - Install all required dependencies from the requirements.txt:
-- Mac: `pip install -r Viewer/requirements/base.txt`
-- Windows: `pip install -r Viewer/requirements/windows.txt`
-- Navigate to the Viewer folder:
-  `cd Viewer`
+- Mac: 
+	
+    `pip install -r Viewer/requirements/base.txt`
+- Windows: 
+	
+    `pip install -r Viewer/requirements/windows.txt`
+- Navigate to the Viewer folder: 
+	
+    `cd Viewer`
 - Run from source:
-  `fbs run`
+	
+    `fbs run`
 - Freeze code:
-  `fbs freeze`
+	
+    `fbs freeze`
 
 Sometimes fbs fails to copy some dependencies, you may need to manually copy the following packages from your environment/lib/python3.6/site-packagers/:
 -- tensorflow
@@ -49,5 +56,6 @@ Copy the above packages to Viewer/target/brAInzViewer/
 
 On Mac, you should also copy the above packages to Viewer/target/brAInzViewer.app/Contents/MacOS/
 
-- Compile installer:
-  `fbs installer`
+- Compile installer: 
+	
+    `fbs installer`
