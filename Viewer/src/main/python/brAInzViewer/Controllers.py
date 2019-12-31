@@ -483,8 +483,6 @@ class Controller(QMainWindow):
 
         if batch:
 
-            self.changeFile(self.niiPaths[0])
-
             if self.exportRootFolder is None or self.exportRootFolder == '':
                 self.setExportDirectory()
             if self.exportRootFolder == '':  # canceled
@@ -495,6 +493,8 @@ class Controller(QMainWindow):
 
             if not okPressed:  # canceled
                 return
+
+            self.changeFile(self.niiPaths[0])
 
         if (not batch) or okPressed:
 
@@ -608,7 +608,6 @@ class Controller(QMainWindow):
                 if volIndex not in self.badVolumes.data:
                     # print(f"Appended vol {volIndex}")
                     self.badVolumes.append(volIndex)
-
 
     def updateDetectionResults(self, prediction):
         self.predictions.append(prediction)
