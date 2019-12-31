@@ -3,5 +3,5 @@
     "author": "Oscar & Eiden",
     "main_module": "src/main/python/brAInzViewer/main.py",
     "version": "0.0.0",
-    "hidden_imports": ["tensorflow_core.python", "absl", "timeit", "wrapt", "astor", "termcolor", "gast"]
+    "hidden_imports": ["tensorflow_core.python", "absl", "timeit", "wrapt", "astor", "termcolor", "gast", "xml.dom"]
 }

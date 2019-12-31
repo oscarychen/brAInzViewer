@@ -484,7 +484,9 @@ class Controller(QMainWindow):
             batch = False
 
         if batch:
-
+            
+            self.changeFile(self.niiPaths[0])
+            
             if self.exportRootFolder is None or self.exportRootFolder == '':
                 self.setExportDirectory()
             if self.exportRootFolder == '': # canceled

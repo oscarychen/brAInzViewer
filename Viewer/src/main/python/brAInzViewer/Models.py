@@ -1,6 +1,7 @@
 import os
 import csv
 
+
 class LabelTypes:
     """A class that holds label typing"""
 
@@ -85,9 +86,9 @@ class BadVolumes:
     def saveToFile(self):
         try:
             badVolumesFile = os.path.splitext(self.filePath)[0] + '_badvolumes.csv'
-            with open(badVolumesFile, mode='w', newline = '') as file:
+            with open(badVolumesFile, mode='w', newline='') as file:
                 writer = csv.writer(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-                writer.writerow(['bad_volume_num'])
+                writer.writerow(['bad_volume_num(zero-index: starting with volume 0)'])
 
                 for vol in self.data:
                     writer.writerow([vol])
@@ -255,4 +256,3 @@ class LabelData:
             sliceLabels = self.labelData[(volume, sliceType, sliceNum)]
 
         return sliceLabels
-
