@@ -26,10 +26,10 @@ Check our release page https://github.com/airoscar/brAInzViewer/releases
 
 - Python 3.6 is recommended to run or build from source
 - Install all required dependencies from the requirements.txt:
-- Mac: 
+- - Mac: 
 	
     `pip install -r Viewer/requirements/base.txt`
-- Windows: 
+- - Windows: 
 	
     `pip install -r Viewer/requirements/windows.txt`
 - Navigate to the Viewer folder: 
