@@ -12,6 +12,7 @@ import csv
 
 import time
 
+
 class Controller(QMainWindow):
 
     def __init__(self, ctx):
@@ -85,7 +86,7 @@ class Controller(QMainWindow):
                 exit(0)
             self.fileSelected = self.niiPaths[0]
             # print(f'DEBUG: File selected: {self.fileSelected}')
-            try: 
+            try:
                 nii = nib.load(self.fileSelected)
                 self.data = nii.get_fdata()
             except:
@@ -142,7 +143,6 @@ class Controller(QMainWindow):
                 QMessageBox.warning(w, 'Warning', 'Error encountered while saving files')
                 w.show()
             else:  # Succesfully wrote label data to file, load next file
-                print("label data saved.")
                 self.loadNewFile(file)
 
     def loadNewFile(self, file):
@@ -168,7 +168,8 @@ class Controller(QMainWindow):
 
         currentSliderValue = self.brightnessSelector.endSlider.value() + self.brightnessSelector.startSliderMaxValue
         newUpperBrightness = np.percentile(self.data[:, :, :, self.volumeNum], 90)
-        newSliderValue = newUpperBrightness / self.currentUpperBrightness * currentSliderValue - self.brightnessSelector.startSliderMaxValue
+        newSliderValue = newUpperBrightness / self.currentUpperBrightness * \
+            currentSliderValue - self.brightnessSelector.startSliderMaxValue
         self.brightnessSelector.endSlider.setValue(newSliderValue)
         # print(f'DEBUG: currentSliderValue={currentSliderValue}, newSliderValue={newSliderValue}, currentUpperBrightness={self.currentUpperBrightness}, newUpperBrightness={newUpperBrightness}, , ')
         self.currentUpperBrightness = newUpperBrightness
@@ -370,7 +371,7 @@ class Controller(QMainWindow):
         """Exports a new nii file"""
         if self.exportRootFolder == None or self.exportRootFolder == '':
             self.setExportDirectory()
-        if self.exportRootFolder == '': # canceled
+        if self.exportRootFolder == '':  # canceled
             return
 
         relPath = os.path.relpath(self.fileSelected, self.rootFolder)
@@ -394,13 +395,13 @@ class Controller(QMainWindow):
 
     def saveAuxFiles(self, niiPath, goodVolumes):
         """Exports aux files, such as b matrix file"""
-    
+
         sourcePath = os.path.splitext(self.fileSelected)[0]
         destinationPath = os.path.splitext(niiPath)[0]
 
         # print(f'DEBUG: saveAuxFiles called: sourcePath= {sourcePath}, destinationPath={destinationPath}')
 
-        try: 
+        try:
             bvec = np.loadtxt(sourcePath + '.bvec', dtype=float, delimiter=' ')
             bvec = bvec[goodVolumes, ...]
         except:
@@ -408,7 +409,7 @@ class Controller(QMainWindow):
 
         try:
             bval = np.loadtxt(sourcePath + '.bval', dtype=float, delimiter=' ')
-            bval =bval[goodVolumes, ...]
+            bval = bval[goodVolumes, ...]
         except:
             bval = None
 
@@ -423,7 +424,7 @@ class Controller(QMainWindow):
                             f.write('\t')
                     f.write('\n')
 
-        if bvec is not None: 
+        if bvec is not None:
             np.savetxt(destinationPath + '.bvec', bvec, fmt='%.6f', delimiter=' ', newline='\n', encoding='utf-8')
 
         if bval is not None:
@@ -433,34 +434,31 @@ class Controller(QMainWindow):
                     if index < len(bval)-1:
                         f.write(' ')
 
-        
-
     def computeBMatrix(self, bvec, bval):
         X = np.zeros([bval.shape[0], 6])
         for i in range(0, 6):
-            X[:,i] = bval
+            X[:, i] = bval
         Y = np.zeros([bvec.shape[0], 6])
-        Y[:, 0] = np.multiply(bvec[:,0],bvec[:,0])
-        Y[:, 1] = np.multiply(2*bvec[:,0], bvec[:,1])
-        Y[:, 2] = np.multiply(2*bvec[:,0], bvec[:,2])
-        Y[:, 3] = np.multiply(bvec[:,1], bvec[:,1])
-        Y[:, 4] = np.multiply(2*bvec[:,1], bvec[:,2])
-        Y[:, 5] = np.multiply(bvec[:,2], bvec[:,2])
+        Y[:, 0] = np.multiply(bvec[:, 0], bvec[:, 0])
+        Y[:, 1] = np.multiply(2*bvec[:, 0], bvec[:, 1])
+        Y[:, 2] = np.multiply(2*bvec[:, 0], bvec[:, 2])
+        Y[:, 3] = np.multiply(bvec[:, 1], bvec[:, 1])
+        Y[:, 4] = np.multiply(2*bvec[:, 1], bvec[:, 2])
+        Y[:, 5] = np.multiply(bvec[:, 2], bvec[:, 2])
 
         bmatrix = np.multiply(X, Y)
 
         return bmatrix
 
-
     def setExportDirectory(self):
 
-        okPressed = QMessageBox.question(self, 'Export destination','Select an export directory.', QMessageBox.Ok)
+        okPressed = QMessageBox.question(self, 'Export destination', 'Select an export directory.', QMessageBox.Ok)
 
         if okPressed:
             self.showExportDirSelector()
 
     def showExportDirSelector(self):
-        self.exportRootFolder = QFileDialog.getExistingDirectory(None,directory='../')
+        self.exportRootFolder = QFileDialog.getExistingDirectory(None, directory='../')
 
     def loadPredictionModel(self, *args, **kwargs):
         if 'batch' in kwargs:
@@ -484,20 +482,19 @@ class Controller(QMainWindow):
             batch = False
 
         if batch:
-            
+
             self.changeFile(self.niiPaths[0])
-            
+
             if self.exportRootFolder is None or self.exportRootFolder == '':
                 self.setExportDirectory()
-            if self.exportRootFolder == '': # canceled
+            if self.exportRootFolder == '':  # canceled
                 return
 
-            self.autoRemoveThreshold, okPressed = QInputDialog.getDouble(self, "Scanning all files","Confidence threshold (volumes that score higher than this threshold in the motion detector will be automatically removed):", 90, 0, 99, 0)
+            self.autoRemoveThreshold, okPressed = QInputDialog.getDouble(
+                self, "Scanning all files", "Confidence threshold (volumes that score higher than this threshold in the motion detector will be automatically removed):", 90, 0, 99, 0)
 
-            if not okPressed: # canceled
+            if not okPressed:  # canceled
                 return
-
-
 
         if (not batch) or okPressed:
 
@@ -516,14 +513,13 @@ class Controller(QMainWindow):
             self.progress.show()
 
         if self.motionDetector.model is None:
-            
+
             self.loadPredictionModel(*args, **kwargs)
         else:
             self.runDetection(*args, **kwargs)
 
-
     def runDetection(self, *args, **kwargs):
-      
+
         print("\nScanning...")
         self.progress.setLabelText(self.fileSelected)
         self.predictions = []
@@ -531,7 +527,7 @@ class Controller(QMainWindow):
 
         # batch flag is passed either in args or kwargs (don't ask me) signal emit can't send keyword arguments
         if args:
-            batch=args[0]
+            batch = args[0]
         if ('batch' in kwargs and kwargs['batch']) or batch:
             self.thread.results.connect(self.updateDetectionResultsThenRunNext)
         else:
@@ -575,22 +571,24 @@ class Controller(QMainWindow):
 
         if 'batch' in kwargs and 'fileIndex' in kwargs:
             self.autoRemoveCorruptVolumes()
-            
+
             batch = kwargs['batch']
             nextFileIndex = kwargs['fileIndex'] + 1
 
             # Set up next file
             if batch and nextFileIndex < len(self.niiPaths):
                 self.saveNillFile()
+
                 self.changeFile(self.niiPaths[nextFileIndex])
                 self.runDetection(batch=True)
 
             else:
+                self.saveNillFile()
+
                 self.finishProcessing('Detection complete. Potential volumes with motion: {}'.format(badVolCount))
 
-        else: 
+        else:
             self.finishProcessing('Detection complete. Potential volumes with motion: {}'.format(badVolCount))
-        
 
     def finishProcessing(self, msg):
         self.mainWindow.setStatusMessage(msg)
@@ -599,19 +597,24 @@ class Controller(QMainWindow):
         self.triPlaneView.enableButtons()
 
     def autoRemoveCorruptVolumes(self):
+        self.badVolumes.clear()
         print("----Results----")
         print("File " + self.fileSelected)
         for volIndex, volScore in enumerate(self.volumeWithLabelsList):
             if isinstance(volScore, (int, float)) and volScore >= self.autoRemoveThreshold:
-                print("bad vol" + str(volIndex) + " score=" + str(volScore))
-                
+                print("bad vol " + str(volIndex) + " score=" + str(volScore))
+
+                # print(f"volIndex={volIndex}, self.badVolumes.data={self.badVolumes.data}")
                 if volIndex not in self.badVolumes.data:
+                    # print(f"Appended vol {volIndex}")
                     self.badVolumes.append(volIndex)
+
 
     def updateDetectionResults(self, prediction):
         self.predictions.append(prediction)
         self.progress.setValue(len(self.predictions))
-        self.mainWindow.setStatusMessage('Processing volume {}'.format(len(self.predictions)) + ' of {}'.format(self.fileSelected))
+        self.mainWindow.setStatusMessage('Processing volume {}'.format(
+            len(self.predictions)) + ' of {}'.format(self.fileSelected))
         if len(self.predictions) == self.data.shape[3]:
             self.processPredictions()
 
@@ -620,10 +623,10 @@ class Controller(QMainWindow):
 
         self.predictions.append(prediction)
         self.progress.setValue(len(self.predictions))
-        self.mainWindow.setStatusMessage('Processing volume {}'.format(len(self.predictions)) + ' of {}'.format(self.fileSelected))
+        self.mainWindow.setStatusMessage('Processing volume {}'.format(
+            len(self.predictions)) + ' of {}'.format(self.fileSelected))
         if len(self.predictions) == self.data.shape[3]:
             self.processPredictions(batch=True, fileIndex=index)
-
 
 
 class LoadModel(QThread):
@@ -640,7 +643,7 @@ class LoadModel(QThread):
     def loadModel(self):
         # model = load_model(self.detectorModelPath)
         self.motionDetector.setModel(self.detectorModelPath, self.detectSliceRange, self.detectResizeDimension)
-        self.results.emit(self.startBatch==True)
+        self.results.emit(self.startBatch == True)
 
     def run(self):
         self.loadModel()

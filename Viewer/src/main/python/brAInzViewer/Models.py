@@ -94,6 +94,7 @@ class BadVolumes:
                     writer.writerow([vol])
 
             self.clear()
+            # print("Saved _badvolumes.csv")
             return True
 
         except Exception as e:
