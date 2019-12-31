@@ -41,6 +41,18 @@ https://youtu.be/HMPbxrktTrA
 	```
 	fbs freeze
 	```
+
+Sometimes fbs fails to copy some dependencies, you may need to manually copy the following packages from your environment/lib/python3.6/site-packagers/:
+ -- tensorflow
+ -- tensorflow_core
+ -- absl
+ -- astor
+ -- google
+
+ Copy the above packages to Viewer/target/brAInzViewer/
+
+ On Mac, you should also copy the above packages to Viewer/target/brAInzViewer.app/Contents/MacOS/
+
 - Compile installer:
 	```
 	fbs installer
