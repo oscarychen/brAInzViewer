@@ -19,11 +19,8 @@ Our built-in analyzer uses advanced A.I. algorithm to estimate the amount of dam
 - Video demo:
   https://youtu.be/HMPbxrktTrA
 
-# Download Installers
-
-- OS X: [download](https://drive.google.com/file/d/1v6TZJHUCbZFDeAg8_MgzdRlFzSJmXwF3/view?usp=sharing)
-- Windows: Link coming soon
-- Linux: Link coming soon
+# Compiled installers
+Check our release page https://github.com/airoscar/brAInzViewer/releases
 
 # To run/build from source
 
@@ -45,15 +42,14 @@ Our built-in analyzer uses advanced A.I. algorithm to estimate the amount of dam
 	
     `fbs freeze`
 
-Sometimes fbs fails to copy some dependencies, you may need to manually copy the following packages from your environment/lib/python3.6/site-packagers/:
--- tensorflow
--- tensorflow_core
--- absl
--- astor
--- google
+Sometimes fbs fails to copy some dependencies, you may need to manually copy the missing packages from your environment (ie: environment/lib/python3.6/site-packagers/) to the fbs build folder. The packages may included but not limited to the following:
+* tensorflow
+* tensorflow_core
+* absl
+* astor
+* google
 
 Copy the above packages to Viewer/target/brAInzViewer/
-
 On Mac, you should also copy the above packages to Viewer/target/brAInzViewer.app/Contents/MacOS/
 
 - Compile installer: 
