@@ -6,4 +6,6 @@ opencv-python==3.1.0.5
 PyInstaller==3.4
 PyQt5==5.9.2
 tensorflow==1.15.0
+tornado==6.0.3
+pywin32==227
 fbs==0.8.4
