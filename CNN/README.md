@@ -8,7 +8,8 @@ Note that training should be run using a GPU supported by Tensorflow. The Tensor
  - Modify paths inside MaxGenerator.py and run
    - This script pulls the maximum value from every volume of the scan and puts it into /Inputs/maxVals.pickle
  - Modify paths and values inside DataUndersampler.py and run
-   - This script pregenerates resized and normalized slices for use in training 
+   - This script pregenerates resized and normalized slices for use in training
+   - The number of slices you choose depends on how many 'bad' slices are available and how many can fit in RAM of your training machine.
  - Modify file paths in TrainInRam.py and run
    - Loads pregenerated data to RAM and begins training
  - During training, run `tensorboard --logdir logs` and navigate to localhost:6006 in a web browser to monitor training
