@@ -18,6 +18,9 @@ Our built-in analyzer uses advanced A.I. algorithm to estimate the amount of dam
 
 - Video demo:
   https://youtu.be/HMPbxrktTrA
+  
+# Model performance (Jan 1, 2020)
+![](CNN/ConfusionMatrices.png)
 
 # Compiled installers
 Check our release page https://github.com/airoscar/brAInzViewer/releases
