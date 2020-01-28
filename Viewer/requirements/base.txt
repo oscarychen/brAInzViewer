@@ -5,5 +5,5 @@ matplotlib==2.1.2
 opencv-python==3.1.0.5
 PyInstaller==3.6
 PyQt5==5.9.2
-tensorflow==1.15.0
+tensorflow==1.15.2
 fbs==0.8.4
